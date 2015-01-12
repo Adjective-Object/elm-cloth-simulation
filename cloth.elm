@@ -2,8 +2,9 @@ import Color (..)
 import Graphics.Collage (..)
 import Graphics.Element (..)
 import List
-import signal
-import Array(Array, map, indexedMap, foldl, length, get, fromList, empty, toList)
+import Time (inSeconds, fps)
+import Signal
+import Array(Array, map, indexedMap, foldl, length, get, fromList, empty, toList, append)
 
 -- cuz im lazy and dont want to unpack maybes in contexts I know are safe
 (!|):(Array a)->Int->a
@@ -11,12 +12,21 @@ import Array(Array, map, indexedMap, foldl, length, get, fromList, empty, toList
                   Just x -> x
                   _ -> (List.head (toList arr))
 
-
 type alias Point = {x:Float, y:Float}
-type alias PointMass = {loc:Point, velocity:Point, mass:Float}
+type alias PointMass = {loc:Point, velocity:Point, mass:Float, fixed:Bool}
 type alias Spring = {index_a:Int, index_b:Int, k:Float, len:Float}
-
 type alias Cloth = {pointmasses:Array PointMass, springs:Array Spring}
+
+default_pointmass = { loc = Point 0 0,
+                      velocity = Point 0 0,
+                      mass = 1,
+                      fixed = True}
+
+default_spring = {  index_a = -1,
+                    index_b = -1,
+                    k = 1.0,
+                    len = 1.0}
+
 
 addPoints:Point->Point->Point
 addPoints a b = Point ((a.x)+(b.x)) ((a.y)+(b.y))
@@ -35,7 +45,6 @@ geta points spring = points !| (spring.index_a)
 
 getb:Array PointMass->Spring->PointMass
 getb points spring = points !| (spring.index_b)
-
 
 -- gets the distance between two points
 dist:Point->Point->Float
@@ -64,9 +73,12 @@ springForce s pointdb = let aloc = (geta pointdb s).loc
                              (Point rawforce 0)
                              (angle aloc bloc)
 
-applyforce:Point->Int->Point->Point
-applyforce rootforce index force = 
-    let newforce = 
+-- applies a force to the two points given by i
+applyForce:Point->Int->Int->Int->Point->Point
+applyForce rootforce a b index force = 
+    let 
+      newforce:Point
+      newforce = 
         case index of 
           a -> rootforce
           b -> invertPoint rootforce
@@ -79,7 +91,7 @@ addSpringForces pointmasses spring forces =
   let rootforce = (springForce spring pointmasses)
       a = spring.index_a
       b = spring.index_b
-  in indexedMap (applyforce rootforce) forces
+  in indexedMap (applyForce rootforce a b) forces
 
 resultingVelocity:PointMass->Point->Float->Point
 resultingVelocity ptmass force time = 
@@ -100,10 +112,8 @@ applyForces forces cloth time =
 
       newPointMasses = indexedMap 
           (\index clothpoint->
-            PointMass 
-              clothpoint.loc
-              (newvels !| index)
-              clothpoint.mass)
+            {clothpoint |
+                velocity <- (newvels !| index)})
           cloth.pointmasses
 
   in Cloth newPointMasses cloth.springs
@@ -120,61 +130,84 @@ updateCloth cloth time =
       in applyForces forces cloth time
 
 
-drawCloth : Array Point->Array Spring->Color->List Form
-drawCloth ptdb springs color = 
-  collage 300 300
-    (List.map 
-      (\ spring -> 
-        let a = (ptdb !| spring.index_a)
-            b = (ptdb !| spring.index_a)
-        in traced 
-            (solid color) 
-            (path [(a.x, a.y) (b.x, b.y)])) springs)
+drawCloth : Cloth->Color->Form
+drawCloth cloth color = 
+  let ptdb:Array Point
+      ptdb = map (\ ptmass -> ptmass.loc) cloth.pointmasses
+      springs:Array Spring
+      springs = cloth.springs
+  in group
+    ( (toList (map 
+        (\ spring -> 
+          let a = (ptdb !| spring.index_a)
+              b = (ptdb !| spring.index_b)
+          in traced 
+              (solid color) 
+              (path [(a.x, a.y), (b.x, b.y)]) )
+        springs))
+      ++ 
+      (toList (map 
+        (\pt -> (circle 2) 
+                    |> filled color
+                    |> (move (pt.x, pt.y)))
+        ptdb))
+    )
 
----------------------------- mainloop stuff
+---------------------------- higher level logic stuff
 
-rectCloth:(Int,Int)->(Int,Int)->Float->Float->Float->Cloth
+-- create a rectangular piece of cloth
+rectCloth:(Float, Float)->(Int,Int)->Float->Float->Float->Cloth
 rectCloth (offset_x, offset_y) 
             (cloth_width, cloth_height) 
             point_mass
             spring_len spring_k = 
-  let coords = 
-        (map (\ n -> 
-          (n%cloth_width, n/cloth_width)) 
-          (fromList [0 .. cloth_width * cloth_height]))
+  let coords:Array (Int, Int)
+      coords = 
+        (map (\ n -> (n % cloth_width, n//cloth_width)) 
+          (fromList [0 .. cloth_width * cloth_height - 1]))
   in Cloth 
-      --generate the list of points
+      --generate the array of points
       (map 
-        (\(x, y) -> 
-          PointMass (Point
-                    offset_x + x * spring_len,
-                    offset_y + y * spring_len)
-          (Point 0 0),
-          point_mass)
-        coords
-      )
-    
-      (indexedMap 
-        (\ ind (x, y) -> 
-            (if (x /= (cloth_width - 1))
-              then [(Spring ind (ind+1 spring_k), spring_len)]
-              else [])
-            ++
-            (if (y /= cloth_height - 1)
-              then [(Spring ind (ind+cloth_width) spring_k, spring_len)]
-              else [])
-                     
-          )
+        (\(x_int, y_int) -> 
+          let x = toFloat x_int
+              y = toFloat y_int
+          in {default_pointmass | 
+                loc <- (Point
+                      (offset_x + x * spring_len)
+                      (offset_y + y * spring_len))
+                , mass <- point_mass
+              })
         coords)
+
+      -- and the springs containing those points   
+      (let  connections:Array (List (Spring))
+            connections = 
+              (indexedMap 
+                (\ ind (x, y) -> 
+                  (if (x /= (cloth_width - 1))
+                    then [(Spring ind (ind+1) spring_k spring_len)]
+                    else [])
+                  ++
+                  (if (y /= (cloth_height - 1))
+                    then [(Spring ind (ind+cloth_width) spring_k spring_len)]
+                    else []))
+              coords)
+      in fromList (foldl (++) [] connections))
+        
       
 
-maincloth = rectCloth (10, 10) (2, 3) 1 5 1
+maincloth = rectCloth (0, 0) (3, 4) 1 10 1
 
 step dt cloth =
   updateCloth maincloth dt
 
-mainclothfig : List Form
-mainclothfig = drawCloth maincloth
+view : Cloth->Element
+view maincloth = 
+  collage 600 600
+    [ rect 300 300
+            |> filled (rgb 46 9 39)
+    , drawCloth maincloth (rgb 217 0 0)
+    ]
 
 main : Signal Element
 main = Signal.map inSeconds (fps 30)
