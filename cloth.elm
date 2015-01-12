@@ -2,9 +2,11 @@ import Color (..)
 import Graphics.Collage (..)
 import Graphics.Element (..)
 import List
-import Time (inSeconds, fps)
+import Time (inSeconds, fps, every, second)
 import Signal
-import Array(Array, map, indexedMap, foldl, length, get, fromList, empty, toList, append)
+import Array(Array, map, indexedMap, foldl,
+              length, get, fromList, empty, 
+              toList, append)
 
 -- cuz im lazy and dont want to unpack maybes in contexts I know are safe
 (!|):(Array a)->Int->a
@@ -37,8 +39,11 @@ invertPoint p = Point -p.x -p.y
 scalePoint:Float->Point->Point
 scalePoint scale p = Point (scale*p.x) (scale*p.y)
 
+filledArray:Point->Int->Array Point
+filledArray value l= indexedMap (\ index n -> value) (fromList [0..l]) 
+
 gravityArray:Int->Array Point
-gravityArray l = indexedMap (\ index n -> (Point 0 9.8)) (fromList [0..l])
+gravityArray = filledArray (Point 0 -9.8)
 
 geta:Array PointMass->Spring->PointMass
 geta points spring = points !| (spring.index_a)
@@ -85,13 +90,20 @@ applyForce rootforce a b index force =
           _ -> Point 0 0
     in (addPoints force newforce)
 
--- applies forces to the 
-addSpringForces:Array PointMass->Spring->Array Point->Array Point
-addSpringForces pointmasses spring forces = 
+-- gets the forces applied to each point by the springs, returning
+-- the list of springs
+addSpringForce:Array PointMass->Spring->Array Point->Array Point
+addSpringForce pointmasses spring forces = 
   let rootforce = (springForce spring pointmasses)
       a = spring.index_a
       b = spring.index_b
   in indexedMap (applyForce rootforce a b) forces
+
+getSpringForces:Cloth->Array Point
+getSpringForces cloth = foldl (addSpringForce cloth.pointmasses)
+                        (filledArray (Point 0 0) (length cloth.pointmasses))
+                        cloth.springs
+
 
 resultingVelocity:PointMass->Point->Float->Point
 resultingVelocity ptmass force time = 
@@ -103,53 +115,77 @@ resultingVelocity ptmass force time =
 
 -- takes a cloth and updates the velocities of the points according to the
 -- positions of the points / springs
-applyForces:Array Point->Cloth->Float->Cloth
-applyForces forces cloth time = 
-  let newvels = indexedMap 
+updateClothVelocity:Array Point->Cloth->Float->Cloth
+updateClothVelocity forces cloth time = 
+  let newvels = indexedMap
         (\ index ptmass -> 
           resultingVelocity ptmass (forces !| index) time)
         cloth.pointmasses
 
       newPointMasses = indexedMap 
           (\index clothpoint->
-            {clothpoint |
-                velocity <- (newvels !| index)})
+            if (clothpoint.fixed)
+              then clothpoint
+              else {clothpoint |
+                  velocity <- (newvels !| index)})
           cloth.pointmasses
 
   in Cloth newPointMasses cloth.springs
 
+-- moves each of the pointmasses in the cloth by the appropriate distance
+-- as given by their velocity
+updateClothPosition:Cloth->Float->Cloth
+updateClothPosition cloth dt =
+  {cloth | pointmasses <-
+    map (\ptmass ->
+          {ptmass | 
+            loc <- addPoints 
+                      ptmass.loc 
+                      (scalePoint dt ptmass.velocity)})
+      cloth.pointmasses}
 
--- returns a new cloth which is the input cloth,
--- with velocity updated (applies the wind and the gravity)
+
 updateCloth:Cloth->Float->Cloth
-updateCloth cloth time =
-      let forces = foldl
-                (addSpringForces cloth.pointmasses)
-                (gravityArray (length cloth.springs))
-                cloth.springs
-      in applyForces forces cloth time
+updateCloth previous_cloth dt = 
+  let 
+    gravForces: Array Point
+    gravForces = gravityArray (length previous_cloth.pointmasses)
+
+    cloth_forces:Array Point
+    cloth_forces = getSpringForces 
+                      previous_cloth
+
+    sum_forces = indexedMap 
+                  (\i force -> addPoints force (gravForces !| i))
+                  cloth_forces
+
+    cloth_with_velocities:Cloth
+    cloth_with_velocities = updateClothVelocity cloth_forces previous_cloth dt
+  in updateClothPosition cloth_with_velocities dt
 
 
 drawCloth : Cloth->Color->Form
 drawCloth cloth color = 
-  let ptdb:Array Point
-      ptdb = map (\ ptmass -> ptmass.loc) cloth.pointmasses
+  let ptdb:Array PointMass
+      ptdb = cloth.pointmasses
       springs:Array Spring
       springs = cloth.springs
   in group
     ( (toList (map 
         (\ spring -> 
-          let a = (ptdb !| spring.index_a)
-              b = (ptdb !| spring.index_b)
+          let a = (cloth.pointmasses !| spring.index_a).loc
+              b = (cloth.pointmasses !| spring.index_b).loc
           in traced 
               (solid color) 
               (path [(a.x, a.y), (b.x, b.y)]) )
         springs))
       ++ 
       (toList (map 
-        (\pt -> (circle 2) 
-                    |> filled color
-                    |> (move (pt.x, pt.y)))
+        (\ptms -> (circle 2) 
+                    |> (if ptms.fixed 
+                        then (filled color) 
+                        else (outlined (solid color)))
+                    |> (move (ptms.loc.x, ptms.loc.y)))
         ptdb))
     )
 
@@ -175,6 +211,8 @@ rectCloth (offset_x, offset_y)
                 loc <- (Point
                       (offset_x + x * spring_len)
                       (offset_y + y * spring_len))
+                , fixed <- ( (x_int == 0 || x_int == cloth_width - 1) 
+                          && (y_int == cloth_height - 1))
                 , mass <- point_mass
               })
         coords)
@@ -196,10 +234,12 @@ rectCloth (offset_x, offset_y)
         
       
 
-maincloth = rectCloth (0, 0) (3, 4) 1 10 1
+maincloth = rectCloth (-30, -45) (3, 4) 1 30 1
 
 step dt cloth =
-  updateCloth maincloth dt
+ let newcloth = updateCloth maincloth dt
+ in {maincloth | 
+      pointmasses <- newcloth.pointmasses}
 
 view : Cloth->Element
 view maincloth = 
@@ -208,6 +248,35 @@ view maincloth =
             |> filled (rgb 46 9 39)
     , drawCloth maincloth (rgb 217 0 0)
     ]
+
+port log:Signal String
+port log = Signal.map 
+            (\t -> 
+              "positions:" ++
+              (foldl
+                (++) ""
+                  (map (\ptms -> 
+                    toString (ptms.loc.x, 
+                              ptms.loc.y)) 
+                    maincloth.pointmasses)) 
+              ++ "\nvelocities: " ++
+              (foldl 
+                (++) ""
+                  (map (\ptms -> 
+                    toString (ptms.velocity.x, 
+                              ptms.velocity.y)) 
+                    maincloth.pointmasses))
+              )
+              (every (second))
+
+{-
+port log: Signal String
+port log = Signal.map (\t ->
+        let updatedCloth = step 0.1 maincloth
+            positions = map (\ptms -> ptms.loc) updatedCloth.pointmasses
+        in toString (toList positions)
+      ) (every second)
+-}
 
 main : Signal Element
 main = Signal.map inSeconds (fps 30)
