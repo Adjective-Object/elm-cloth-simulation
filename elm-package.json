@@ -1,0 +1,13 @@
+{
+    "version": "0.0.1",
+    "summary": "simple cloth simulation physics engine",
+    "repository": "https://github.com/USER/PROJECT.git",
+    "license": "BSD3",
+    "source-directories": [
+        "."
+    ],
+    "exposed-modules": ["Cloth"],
+    "dependencies": {
+        "elm-lang/core": "1.1.0 <= v < 2.0.0"
+    }
+}
