@@ -1,5 +1,6 @@
 module Cloth where
-
+import Primitives(..)
+import Utils(..)
 import Color (..)
 import Graphics.Collage (..)
 import Graphics.Element (..)
@@ -10,87 +11,31 @@ import Array(Array, map, indexedMap, foldl,
               length, get, fromList, empty, 
               toList, append)
 
--- cuz im lazy and dont want to unpack maybes in contexts I know are safe
-(!|):(Array a)->Int->a
-(!|) arr ind = case (get ind arr) of
-                  Just x -> x
-                  _ -> (List.head (toList arr))
-
-type alias Point = {x:Float, y:Float}
-type alias PointMass = {loc:Point, velocity:Point, mass:Float, fixed:Bool}
 type alias Spring = {index_a:Int, index_b:Int, k:Float, len:Float}
 type alias Cloth = {pointmasses:Array PointMass, springs:Array Spring}
-
-default_pointmass = { loc = Point 0 0,
-                      velocity = Point 0 0,
-                      mass = 1,
-                      fixed = True}
 
 default_spring = {  index_a = -1,
                     index_b = -1,
                     k = 1.0,
                     len = 1.0}
 
-
-addPoints:Point->Point->Point
-addPoints a b = Point ((a.x)+(b.x)) ((a.y)+(b.y))
-
-invertPoint:Point->Point
-invertPoint p = Point -p.x -p.y
-
-scalePoint:Float->Point->Point
-scalePoint scale p = Point (scale*p.x) (scale*p.y)
-
-filledArray:Point->Int->Array Point
-filledArray value l= indexedMap (\ index n -> value) (fromList [0..l]) 
-
-gravityArray:Int->Array Point
-gravityArray = filledArray (Point 0 -9.8)
-
-geta:Array PointMass->Spring->PointMass
-geta points spring = points !| (spring.index_a)
-
-getb:Array PointMass->Spring->PointMass
-getb points spring = points !| (spring.index_b)
-
--- gets the distance between two points
-dist:Point->Point->Float
-dist a b = sqrt((abs a.x-b.x)^2 + (abs a.y-b.y)^2)
-
--- gets the angle between the two points
-angle:Point->Point->Float
-angle a b = atan2 (a.x-b.x) (a.y-b.y)
-
--- gets rotates point p by angle a about the origin
-rotatepoint:Point->Float->Point
-rotatepoint p a = let xs = sin p.x
-                      xc = cos p.x
-                      ys = sin p.y
-                      yc = cos p.y
-                  in (Point (xc - ys) (xs - yc))
-
 -- returns the force the spring exterts on pointmass a
 -- the force exerted on pointmass b is just the inverse of a.
 springForce:Spring->Array PointMass->Point
-springForce s pointdb = let aloc = (geta pointdb s).loc
-                            bloc = (getb pointdb s).loc
+springForce s pointdb = let aloc = (pointdb !| s.index_a).loc
+                            bloc = (pointdb !| s.index_b).loc
                             realdistance = dist aloc bloc
-                            rawforce = s.k * (realdistance - s.len)
-                        in rotatepoint 
-                             (Point rawforce 0)
-                             (angle aloc bloc)
+                            rawforce = s.k * (s.len - realdistance)
+                        in similarTri (diffPoints aloc bloc) rawforce
 
 -- applies a force to the two points given by i
 applyForce:Point->Int->Int->Int->Point->Point
-applyForce rootforce a b index force = 
-    let 
-      newforce:Point
-      newforce = 
-        case index of 
-          a -> rootforce
-          b -> invertPoint rootforce
-          _ -> Point 0 0
-    in (addPoints force newforce)
+applyForce root_force a b   index prev_force = 
+   if index == a 
+      then addPoints prev_force root_force
+      else if index == b
+        then addPoints prev_force (invertPoint root_force)
+        else prev_force
 
 -- gets the forces applied to each point by the springs, returning
 -- the list of springs
@@ -101,8 +46,8 @@ addSpringForce pointmasses spring forces =
       b = spring.index_b
   in indexedMap (applyForce rootforce a b) forces
 
-getSpringForces:Cloth->Array Point
-getSpringForces cloth = foldl (addSpringForce cloth.pointmasses)
+springForces:Cloth->Array Point
+springForces cloth = foldl (addSpringForce cloth.pointmasses)
                         (filledArray (Point 0 0) (length cloth.pointmasses))
                         cloth.springs
 
@@ -110,7 +55,7 @@ getSpringForces cloth = foldl (addSpringForce cloth.pointmasses)
 resultingVelocity:PointMass->Point->Float->Point
 resultingVelocity ptmass force time = 
   let adjustedVelocity = 
-    scalePoint (time / (ptmass.mass)) force
+    scalepoint (time / (ptmass.mass)) force
   in addPoints
     ptmass.velocity
     adjustedVelocity
@@ -119,18 +64,19 @@ resultingVelocity ptmass force time =
 -- positions of the points / springs
 updateClothVelocity:Array Point->Cloth->Float->Cloth
 updateClothVelocity forces cloth time = 
-  let newvels = indexedMap
-        (\ index ptmass -> 
-          resultingVelocity ptmass (forces !| index) time)
-        cloth.pointmasses
+  let newvels = map
+        (\ (force, ptmass) -> 
+          resultingVelocity ptmass force time)
+        (zip forces cloth.pointmasses)
 
-      newPointMasses = indexedMap 
-          (\index clothpoint->
+      newPointMasses = map 
+          (\ (new_velocity, clothpoint, force) ->
             if (clothpoint.fixed)
               then clothpoint
               else {clothpoint |
-                  velocity <- (newvels !| index)})
-          cloth.pointmasses
+                  velocity <- new_velocity,
+                  last_force <- force})
+          (zip3 newvels cloth.pointmasses forces)
 
   in Cloth newPointMasses cloth.springs
 
@@ -143,26 +89,28 @@ updateClothPosition cloth dt =
           {ptmass | 
             loc <- addPoints 
                       ptmass.loc 
-                      (scalePoint dt ptmass.velocity)})
+                      (scalepoint dt ptmass.velocity)})
       cloth.pointmasses}
 
 
 updateCloth:Cloth->Float->Cloth
-updateCloth previous_cloth dt = 
+updateCloth previous_cloth dtime_millis = 
   let 
-    gravForces: Array Point
-    gravForces = gravityArray (length previous_cloth.pointmasses)
+    -- at most a dt of 0.2 seconds to avoid explosion in laggy situations
+    dt = min (dtime_millis / 1000) 0.2
+    grav_forces: Array Point
+    grav_forces = gravityArray (previous_cloth.pointmasses)
 
     cloth_forces:Array Point
-    cloth_forces = getSpringForces 
+    cloth_forces = springForces 
                       previous_cloth
 
-    sum_forces = indexedMap 
-                  (\i force -> addPoints force (gravForces !| i))
-                  cloth_forces
+    sum_forces = map 
+                  (\ (g_force, c_force) -> addPoints c_force g_force)
+                  (zip grav_forces cloth_forces)
 
     cloth_with_velocities:Cloth
-    cloth_with_velocities = updateClothVelocity cloth_forces previous_cloth dt
+    cloth_with_velocities = updateClothVelocity sum_forces previous_cloth dt
   in updateClothPosition cloth_with_velocities dt
 
 
@@ -189,6 +137,24 @@ drawCloth cloth color =
                         else (outlined (solid color)))
                     |> (move (ptms.loc.x, ptms.loc.y)))
         ptdb))
+      {-++ 
+      (toList (map 
+        (\ptms -> 
+          let dest = addPoints (ptms.loc) (ptms.last_force)
+          in  traced
+              (solid (inversecolor color))
+              (path [ (ptms.loc.x, ptms.loc.y) 
+                    , (dest.x, dest.y)]))
+        ptdb))
+      ++ 
+      (toList (map 
+        (\ptms -> 
+          let dest = addPoints (ptms.loc) (ptms.velocity)
+          in  traced
+              (solid yellow)
+              (path [ (ptms.loc.x, ptms.loc.y) 
+                    , (dest.x, dest.y)]))
+        ptdb))-}
     )
 
 ---------------------------- higher level logic stuff

@@ -6,7 +6,7 @@
     "source-directories": [
         "."
     ],
-    "exposed-modules": ["Cloth"],
+    "exposed-modules": ["Cloth", "Primitives"],
     "dependencies": {
         "elm-lang/core": "1.1.0 <= v < 2.0.0"
     }
