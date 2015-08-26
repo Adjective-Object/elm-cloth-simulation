@@ -1,6 +1,10 @@
 module Primitives where
 
-import Array(Array, map, indexedMap, foldl,
+{-|
+provides primitive math & physics objets, as well as methods for manipulating them
+-}
+
+import Array exposing (Array, map, indexedMap, foldl,
               length, get, fromList, empty, 
               toList, append)
 

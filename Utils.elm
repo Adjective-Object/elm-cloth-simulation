@@ -1,8 +1,12 @@
 module Utils where
 
-import Array(Array, get, toList, indexedMap)
+{-|
+Utilities module
+-}
+
+import Array exposing (Array, get, toList, indexedMap)
 import List
-import Color(..)
+import Color exposing (..)
 
 -- cuz im lazy and dont want to unpack maybes in contexts I know are safe
 (!|):(Array a)->Int->a
@@ -25,5 +29,7 @@ inversecolor c = case c of
                                       b = round (255 * bf)
                                   in inversecolor (RGBA r g b a)
 
+--  TODO missing native binding, dig up from the other branch
 fast_inverse_sqrt : Float -> Float
-fast_inverse_sqrt a = 
+fast_inverse_sqrt a =
+

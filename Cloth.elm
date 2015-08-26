@@ -1,13 +1,14 @@
 module Cloth where
-import Primitives(..)
-import Utils(..)
-import Color (..)
-import Graphics.Collage (..)
-import Graphics.Element (..)
+
+import Primitives exposing (..)
+import Utils exposing (..)
+import Color exposing (..)
+import Graphics.Collage exposing (..)
+import Graphics.Element exposing (..)
 import List
-import Time (inSeconds, fps, every, second)
+import Time exposing (inSeconds, fps, every, second)
 import Signal
-import Array(Array, map, indexedMap, foldl,
+import Array exposing (Array, map, indexedMap, foldl,
               length, get, fromList, empty, 
               toList, append)
 

@@ -1,13 +1,15 @@
 {
     "version": "0.0.1",
     "summary": "simple cloth simulation physics engine",
-    "repository": "https://github.com/USER/PROJECT.git",
+    "repository": "https://github.com/adjective-object/elm-game.git",
     "license": "BSD3",
     "source-directories": [
         "."
     ],
     "exposed-modules": ["Cloth", "Primitives"],
+    
+    "elm-version": "2.1.0 <= v < 3.0.0",
     "dependencies": {
-        "elm-lang/core": "1.1.0 <= v < 2.0.0"
+        "elm-lang/core": "2.1.0 <= v < 3.0.0"
     }
 }
