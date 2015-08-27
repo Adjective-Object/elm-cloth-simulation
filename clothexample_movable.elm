@@ -2,18 +2,18 @@ import Color (..)
 import Graphics.Collage (..)
 import Graphics.Element (..)
 import Graphics.Input(..)
-import List
+import List(head, tail, map2)
 import Time (inSeconds, fps, every, second)
 import Signal
-import String 
+import String
 import Mouse
 import Window
-import Text
-import Array (Array, map, indexedMap, foldl,
-              length, get, empty,
-              toList, append)
+import Array(Array, map, indexedMap, foldl,
+              length, get, fromList, empty,
+              toList, append, slice)
 import Cloth
-
+import Primitives(Point,dist)
+import Utils((!|), zip)
 
 -- modelling the input types
 type alias UserInput =
@@ -80,16 +80,92 @@ type alias Input =
 
 
 -- define the gamestate
-type alias GameState = {cloth: Cloth.Cloth}
+type alias GameState = {
+    cloth: Cloth.Cloth, 
+    grabbedPoint: Maybe Int}
 
 initialState : GameState
-initialState  = { cloth = Cloth.rectCloth (-240, 0) (12, 5) 1 40 50 0.995}
+initialState = { 
+    cloth = Cloth.rectCloth (-160, 0) (8, 5) 30 40 500 0.995
+  , grabbedPoint = Nothing}
+
+
+
+-- helpers for grabbing the cloth
+
+mouseToWorldPt : (Int,Int) -> Point
+mouseToWorldPt (x,y) = 
+  let (window_w, window_h) = Window.dimensions
+  in (x - window_w/2) (window_h/2 - y)
+
+nearestPoint : GameState -> Point -> Point
+nearestPoint state mouse = 
+  let pts = map (\ptms -> ptms.loc) state.cloth.pointmasses
+      first_point = get 0 pts
+      rest_points = slice 1 -1 pts
+      shortest_pair : (Float, Point)
+      shortest_pair = foldl 
+                      (\ (old_dist, old_pt) new_pt -> 
+                        let new_dist = dist new_pt mouse
+                            smaller = (new_dist < old_dist)
+                        in if smaller
+                            then (new_dist, new_pt)
+                            else (old_dist, old_pt))
+                      (dist first_point mouse, first_point)
+                      rest_points
+  in  let (dist, val) = shortest_pair
+      in val
+
+freePoint : Int -> GameState -> GameState 
+freePoint n state = 
+  let cloth = state.cloth
+      freedpts = 
+        indexedMap 
+          (\ ind val -> 
+            if ind == n 
+              then { val | fixed <- False }
+              else val)
+          state.cloth.pointmasses
+      upcloth = { cloth | pointmasses <- freedpts}
+  in { state | cloth <- upcloth }
+
+grabCloth : UserInput -> GameState -> GameState
+grabCloth input state =
+  let statecloth = state.cloth
+      mouse = mouseToWorldPt
+      gPoint = 
+        if input.mouseClicked
+          then nearestPoint state mouse
+          else if input.mouseDown
+            then state.grabbedPoint
+            else Nothing
+  in case gPoint of
+    Nothing -> case state.grabbedPoint of
+                  Nothing -> statecloth
+                  Just pt -> freePoint pt state 
+    Just pt_ind -> 
+        let newLocs : Array Point
+            newLocs = indexedMap 
+                        (\ index oldpt -> 
+                            if index == pt_ind 
+                              then mouse
+                              else oldpt.loc)
+                        (state.cloth.pointmasses)
+            newPoints = map 
+                        (\ (pt, loc) -> {pt | loc <- loc}) 
+                        (zip state.cloth.pointmasses newLocs)
+            cl = { statecloth | pointmasses <- newPoints}
+        in {state | 
+              cloth <- cl
+            ,  grabbedPoint <- gPoint}
 
 
 step: Input -> GameState -> GameState
 step {dt, input} state =
-    let newcloth = Cloth.updateCloth state.cloth dt
-    in {state | cloth <- newcloth}
+    let 
+      gstate = grabCloth input state
+      newcloth = Cloth.updateCloth (gstate.cloth) dt
+    in {gstate | cloth <- newcloth}
 
 render : (Int,Int) -> GameState -> Element
 render (w,h) state =
@@ -97,12 +173,6 @@ render (w,h) state =
     [ rect (toFloat w) (toFloat h)
             |> filled (rgb 46 9 39)
     , Cloth.drawCloth state.cloth (rgb 217 0 0)
-    , toForm (
-            Text.fromString "THIS IS A GAME"
-            |> Text.color (rgb 217 0 0)
-            |> Text.height 36
-            |> Text.leftAligned
-      )
     ]
 
 

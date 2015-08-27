@@ -7,6 +7,7 @@ provides primitive math & physics objets, as well as methods for manipulating th
 import Array exposing (Array, map, indexedMap, foldl,
               length, get, fromList, empty, 
               toList, append)
+import Utils
 
 type alias Point = {x:Float, y:Float}
 type alias PointMass = {
@@ -51,7 +52,7 @@ gravityArray ptmasses =
 -- gets the distance between two points
 -- power maintains negatives, so abs
 dist:Point->Point->Float
-dist a b = sqrt((a.x-b.x)^2 + (b.y-a.y)^2)
+dist a b = Utils.sqrt ((a.x-b.x)^2 + (b.y-a.y)^2)
 
 -- gets the angle between the two points
 angle:Point->Point->Float

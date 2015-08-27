@@ -13,12 +13,17 @@ import Array exposing (Array, map, indexedMap, foldl,
               toList, append)
 
 type alias Spring = {index_a:Int, index_b:Int, k:Float, len:Float}
-type alias Cloth = {pointmasses:Array PointMass, springs:Array Spring}
+type alias Cloth =  { pointmasses:Array PointMass
+                    , springs:Array Spring
+                    , damping_factor:Float }
+
 
 default_spring = {  index_a = -1,
                     index_b = -1,
                     k = 1.0,
                     len = 1.0}
+
+default_cloth = (Cloth (fromList []) (fromList []) 0.99)
 
 -- returns the force the spring exterts on pointmass a
 -- the force exerted on pointmass b is just the inverse of a.
@@ -75,11 +80,14 @@ updateClothVelocity forces cloth time =
             if (clothpoint.fixed)
               then clothpoint
               else {clothpoint |
-                  velocity <- new_velocity,
+                  velocity <- scalepoint (cloth.damping_factor) new_velocity,
                   last_force <- force})
           (zip3 newvels cloth.pointmasses forces)
 
-  in Cloth newPointMasses cloth.springs
+  in  {cloth |
+        pointmasses <- newPointMasses
+      , springs <- cloth.springs 
+      }
 
 -- moves each of the pointmasses in the cloth by the appropriate distance
 -- as given by their velocity
@@ -98,7 +106,7 @@ updateCloth:Cloth->Float->Cloth
 updateCloth previous_cloth dtime_millis = 
   let 
     -- at most a dt of 0.2 seconds to avoid explosion in laggy situations
-    dt = min (dtime_millis / 1000) 0.2
+    dt = (*) 2 <| min (dtime_millis / 500) 0.04
     grav_forces: Array Point
     grav_forces = gravityArray (previous_cloth.pointmasses)
 
@@ -161,44 +169,62 @@ drawCloth cloth color =
 ---------------------------- higher level logic stuff
 
 -- create a rectangular piece of cloth
-rectCloth:(Float, Float)->(Int,Int)->Float->Float->Float->Cloth
-rectCloth (offset_x, offset_y) 
+rectCloth:(Float, Float)->(Int,Int)->Float->Float->Float->Float->Cloth
+rectCloth   (offset_x, offset_y) 
             (cloth_width, cloth_height) 
             point_mass
-            spring_len spring_k = 
+            spring_len spring_k
+            damping_factor = 
   let coords:Array (Int, Int)
       coords = 
         (map (\ n -> (n % cloth_width, n//cloth_width)) 
           (fromList [0 .. cloth_width * cloth_height - 1]))
-  in Cloth 
+  in { default_cloth | 
       --generate the array of points
-      (map 
-        (\(x_int, y_int) -> 
-          let x = toFloat x_int
-              y = toFloat y_int
-          in {default_pointmass | 
-                loc <- (Point
-                      (offset_x + x * spring_len)
-                      (offset_y + y * spring_len))
-                , fixed <- ( (x_int == 0 || x_int == cloth_width - 1) 
-                          && (y_int == cloth_height - 1))
-                , mass <- point_mass
-              })
-        coords)
+        pointmasses <- 
+          (map (\(x_int, y_int) -> 
+            let x = toFloat x_int
+                y = toFloat y_int
+            in {default_pointmass | 
+                  loc <- (Point
+                        (offset_x + x * spring_len)
+                        (offset_y + y * spring_len))
+                  , fixed <- ( (x_int == 0 || x_int == cloth_width - 1) 
+                            && (y_int == cloth_height - 1))
+                  , mass <- point_mass
+                }) coords)
 
       -- and the springs containing those points   
-      (let  connections:Array (List (Spring))
-            connections = 
-              (indexedMap 
-                (\ ind (x, y) -> 
-                  (if (x /= (cloth_width - 1))
-                    then [(Spring ind (ind+1) spring_k spring_len)]
-                    else [])
-                  ++
-                  (if (y /= (cloth_height - 1))
-                    then [(Spring ind (ind+cloth_width) spring_k spring_len)]
-                    else []))
-              coords)
-      in fromList (foldl (++) [] connections))
-        
+      , springs <- 
+        (let  diag_dist : Float
+              diag_dist = (dist origin (Point spring_len spring_len))
+              connections:Array (List (Spring))
+              connections = 
+                (indexedMap 
+                  (\ ind (x, y) -> 
+                    (if (x /= (cloth_width - 1))
+                      then [(Spring ind (ind+1) spring_k spring_len)]
+                      else [])
+                    ++
+                    (if (y /= (cloth_height - 1))
+                      then [(Spring ind (ind+cloth_width) spring_k spring_len)]
+                      else [])
+                    ++ 
+                    (if (y == 0)
+                      then [(Spring ind (length coords) spring_k spring_len)]
+                      else []) {-
+                    ++
+                    (if ((y /= cloth_height - 1) && (x /= cloth_width - 1))
+                      then [(Spring ind (ind+cloth_width+1) (spring_k/50) diag_dist)]
+                      else [])
+                    ++
+                    (if ((y /= cloth_height - 1) && (x /= 0))
+                      then [(Spring ind (ind+cloth_width-1) (spring_k/50) diag_dist)]
+                      else [])-}
+
+                ) 
+                  coords)
+        in fromList (foldl (++) [] connections))
+
+      , damping_factor <- damping_factor}
       

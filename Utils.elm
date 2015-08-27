@@ -8,6 +8,8 @@ import Array exposing (Array, get, toList, indexedMap)
 import List
 import Color exposing (..)
 
+import Native.OptMath
+
 -- cuz im lazy and dont want to unpack maybes in contexts I know are safe
 (!|):(Array a)->Int->a
 (!|) arr ind = case (get ind arr) of
@@ -29,7 +31,4 @@ inversecolor c = case c of
                                       b = round (255 * bf)
                                   in inversecolor (RGBA r g b a)
 
---  TODO missing native binding, dig up from the other branch
-fast_inverse_sqrt : Float -> Float
-fast_inverse_sqrt a =
-
+sqrt = Native.OptMath.sqrt
