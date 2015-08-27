@@ -146,12 +146,12 @@ drawCloth cloth color =
                         else (outlined (solid color)))
                     |> (move (ptms.loc.x, ptms.loc.y)))
         ptdb))
-      {-++ 
+      ++ 
       (toList (map 
         (\ptms -> 
           let dest = addPoints (ptms.loc) (ptms.last_force)
           in  traced
-              (solid (inversecolor color))
+              (solid (complement color))
               (path [ (ptms.loc.x, ptms.loc.y) 
                     , (dest.x, dest.y)]))
         ptdb))
@@ -163,7 +163,7 @@ drawCloth cloth color =
               (solid yellow)
               (path [ (ptms.loc.x, ptms.loc.y) 
                     , (dest.x, dest.y)]))
-        ptdb))-}
+        ptdb))
     )
 
 ---------------------------- higher level logic stuff
