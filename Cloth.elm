@@ -11,6 +11,7 @@ import Signal
 import Array exposing (Array, map, indexedMap, foldl,
               length, get, fromList, empty, 
               toList, append)
+import Debug exposing (log, watch, crash)
 
 type alias Spring = {index_a:Int, index_b:Int, k:Float, len:Float}
 type alias Cloth =  { pointmasses:Array PointMass
@@ -24,6 +25,17 @@ default_spring = {  index_a = -1,
                     len = 1.0}
 
 default_cloth = (Cloth (fromList []) (fromList []) 0.99)
+
+
+(!|):Array a->Int->a
+(!|) arr ind = case get ind arr of
+                Just x -> x
+                Nothing -> crash <| 
+                  "crash because we tried to get [" 
+                  ++ toString ind 
+                  ++ "] from array len " 
+                  ++ toString (length arr)
+                  ++ "\n\n" ++ toString arr
 
 -- returns the force the spring exterts on pointmass a
 -- the force exerted on pointmass b is just the inverse of a.
@@ -53,15 +65,19 @@ addSpringForce pointmasses spring forces =
   in indexedMap (applyForce rootforce a b) forces
 
 springForces:Cloth->Array Point
-springForces cloth = foldl (addSpringForce cloth.pointmasses)
-                        (filledArray (Point 0 0) (length cloth.pointmasses))
-                        cloth.springs
+springForces cloth = 
+  let watch1 = (watch "cloth pointmasses" cloth.pointmasses)
+      watch2 = (watch "num pointmasses" <| Array.length cloth.pointmasses)
+      watch3 = (watch "springs" <| cloth.springs)
+  in foldl (addSpringForce cloth.pointmasses)
+      (filledArray (Point 0 0) (length cloth.pointmasses))
+      cloth.springs
 
 
 resultingVelocity:PointMass->Point->Float->Point
 resultingVelocity ptmass force time = 
   let adjustedVelocity = 
-    scalepoint (time / (ptmass.mass)) force
+    scalePoint (time / (ptmass.mass)) force
   in addPoints
     ptmass.velocity
     adjustedVelocity
@@ -80,7 +96,7 @@ updateClothVelocity forces cloth time =
             if (clothpoint.fixed)
               then clothpoint
               else {clothpoint |
-                  velocity <- scalepoint (cloth.damping_factor) new_velocity,
+                  velocity <- scalePoint (cloth.damping_factor) new_velocity,
                   last_force <- force})
           (zip3 newvels cloth.pointmasses forces)
 
@@ -98,7 +114,7 @@ updateClothPosition cloth dt =
           {ptmass | 
             loc <- addPoints 
                       ptmass.loc 
-                      (scalepoint dt ptmass.velocity)})
+                      (scalePoint dt ptmass.velocity)})
       cloth.pointmasses}
 
 
@@ -176,7 +192,7 @@ rectCloth   (offset_x, offset_y)
             spring_len spring_k
             damping_factor = 
   let coords:Array (Int, Int)
-      coords = 
+      coords = log "coords" <|
         (map (\ n -> (n % cloth_width, n//cloth_width)) 
           (fromList [0 .. cloth_width * cloth_height - 1]))
   in { default_cloth | 
@@ -202,17 +218,20 @@ rectCloth   (offset_x, offset_y)
               connections = 
                 (indexedMap 
                   (\ ind (x, y) -> 
+                    -- if its not on the right edge, connect too next
                     (if (x /= (cloth_width - 1))
                       then [(Spring ind (ind+1) spring_k spring_len)]
                       else [])
                     ++
+                    -- if not on the bottom, connect to one lower
                     (if (y /= (cloth_height - 1))
                       then [(Spring ind (ind+cloth_width) spring_k spring_len)]
                       else [])
+                    {-
                     ++ 
                     (if (y == 0)
                       then [(Spring ind (length coords) spring_k spring_len)]
-                      else []) {-
+                      else [])
                     ++
                     (if ((y /= cloth_height - 1) && (x /= cloth_width - 1))
                       then [(Spring ind (ind+cloth_width+1) (spring_k/50) diag_dist)]

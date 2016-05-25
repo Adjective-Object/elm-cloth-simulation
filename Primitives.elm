@@ -1,7 +1,22 @@
 module Primitives where
 
 {-|
-provides primitive math & physics objets, as well as methods for manipulating them
+provides primitive math & physics objets, as well as methods for manipulating 
+them
+
+@docs Point
+@docs PointMass
+@docs default_pointmass
+@docs origin
+@docs addPoints
+@docs diffPoints
+@docs invertPoint
+@docs scalePoint
+@docs similarTri
+@docs gravityArray
+@docs dist
+@docs angle
+@docs rotatepoint
 -}
 
 import Array exposing (Array, map, indexedMap, foldl,
@@ -9,56 +24,67 @@ import Array exposing (Array, map, indexedMap, foldl,
               toList, append)
 import Utils
 
+{-| 2 dimensional point -}
 type alias Point = {x:Float, y:Float}
+
+{-| Basic physics primitive. 
+Can be fixed (unmoving).
+Keeps track of force applied to it on last frame
+ -}
 type alias PointMass = {
   loc:Point, velocity:Point, mass:Float, fixed:Bool, last_force: Point}
 
-
+{-| fixed pointmass @ origin with no velocity or force, and a mass of 1-}
+default_pointmass:PointMass
 default_pointmass = { loc = Point 0 0
                     , velocity = Point 0 0
                     , mass = 1
                     , fixed = True
                     , last_force = Point 0 0}
 
+{-| Point @ (0,0) -}
+origin:Point
 origin = Point 0 0
 
-
+{-| Adds two points together -}
 addPoints:Point->Point->Point
 addPoints a b = Point ((a.x)+(b.x)) ((a.y)+(b.y))
 
+{-| Takes the difference between two points -}
 diffPoints:Point->Point->Point
 diffPoints a b = Point ((a.x)-(b.x)) ((a.y)-(b.y))
 
+{-| inverts a point about the origin -}
 invertPoint:Point->Point
 invertPoint p = Point -p.x -p.y
 
-scalepoint:Float->Point->Point
-scalepoint scale p = Point (scale*p.x) (scale*p.y)
+{-| scales a point away from the origin by some ratio -}
+scalePoint:Float->Point->Point
+scalePoint scale p = Point (scale*p.x) (scale*p.y)
 
+{-| finds a similar right triangle to the specified one, 
+but with the supplied hypotenuse-}
 similarTri:Point->Float->Point
 similarTri original hypotenuse = 
     let original_hypotenuse = dist origin original
         ratio = hypotenuse / original_hypotenuse
-    in scalepoint ratio original
+    in scalePoint ratio original
 
-filledArray:Point->Int->Array Point
-filledArray value l= indexedMap (\ index n -> value) (fromList [0..l]) 
-
+{-| finds the force of gravity applied by each point to each pointmass -}
 gravityArray:Array PointMass->Array Point
 gravityArray ptmasses = 
-  map (\ ptmas -> scalepoint ptmas.mass (Point 0 -9.8)) ptmasses 
+  map (\ ptmas -> scalePoint ptmas.mass (Point 0 -9.8)) ptmasses 
 
 
--- gets the distance between two points
--- power maintains negatives, so abs
+{-| gets the distance between two points -}
 dist:Point->Point->Float
 dist a b = Utils.sqrt ((a.x-b.x)^2 + (b.y-a.y)^2)
 
--- gets the angle between the two points
+{-| gets the angle between the two points -}
 angle:Point->Point->Float
 angle a b = atan2 (b.y - a.y) (b.x - a.x)
 
--- gets rotates point p by angle a about the origin
+{-| gets rotates point p by angle a about the origin -}
 rotatepoint:Point->Float->Point
 rotatepoint p ang = let theta = -pi / 2 - ang
                         xs = p.x * sin theta

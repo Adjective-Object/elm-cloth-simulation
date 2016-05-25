@@ -4,21 +4,21 @@ module Utils where
 Utilities module
 -}
 
-import Array exposing (Array, get, toList, indexedMap)
+import Array exposing (Array, get, indexedMap, fromList, toList)
 import List
 import Color exposing (Color, hsla)
 
 import Native.OptMath
 
--- cuz im lazy and dont want to unpack maybes in contexts I know are safe
-(!|):(Array a)->Int->a
-(!|) arr ind = case (get ind arr) of
-                  Just x -> x
-
 zip : Array a -> Array b -> Array (a,b)
-zip aX aY = indexedMap (\ i x -> (x, (aY !| i)) ) aX
+zip a b = fromList <| List.map2 (,) (toList a) (toList b)
 
-zip3 : Array a -> Array b -> Array c-> Array (a,b,c)
-zip3 aX aY aZ= indexedMap (\ i x -> (x, (aY !| i), (aZ !| i)) ) aX
+zip3 : Array a -> Array b -> Array c -> Array (a,b,c)
+zip3 a b c = fromList 
+    <| List.map3 (\a b c -> (a, b, c)) (toList a) (toList b) (toList c)
 
-sqrt = Native.OptMath.sqrt
+sqrt = Native.OptMath.sqrt 
+
+{-| Array of size l, filled with a specified value -}
+filledArray:x->Int->Array x
+filledArray value l = indexedMap (\ index n -> value) (fromList [0..l]) 

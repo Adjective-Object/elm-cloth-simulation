@@ -13,7 +13,7 @@ import Array(Array, map, indexedMap, foldl,
               toList, append, slice)
 import Cloth
 import Primitives(Point,dist)
-import Utils((!|), zip)
+import Utils(zip)
 
 -- modelling the input types
 type alias UserInput =

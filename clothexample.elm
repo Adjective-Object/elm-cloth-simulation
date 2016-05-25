@@ -1,15 +1,16 @@
-import Color (..)
-import Graphics.Collage (..)
-import Graphics.Element (..)
-import Graphics.Input(..)
+import Color exposing (..)
+import Graphics.Collage exposing (..)
+import Graphics.Element exposing (..)
+import Graphics.Input exposing (..)
 import List
-import Time (inSeconds, fps, every, second)
+import Time exposing (inSeconds, fps, every, second)
 import Signal
 import String 
 import Mouse
 import Window
 import Text
-import Array (Array, map, indexedMap, foldl,
+import Array exposing (
+              Array, map, indexedMap, foldl,
               length, get, empty,
               toList, append)
 import Cloth
@@ -83,7 +84,7 @@ type alias Input =
 type alias GameState = {cloth: Cloth.Cloth}
 
 initialState : GameState
-initialState  = { cloth = Cloth.rectCloth (-240, 0) (12, 5) 1 40 50 0.995}
+initialState  = { cloth = Cloth.rectCloth (-240, 0) (6, 4) 0.5 40 50 0.995}
 
 
 step: Input -> GameState -> GameState
@@ -97,11 +98,9 @@ render (w,h) state =
     [ rect (toFloat w) (toFloat h)
             |> filled (rgb 46 9 39)
     , Cloth.drawCloth state.cloth (rgb 217 0 0)
-    , toForm (
-            Text.fromString "THIS IS A GAME"
-            |> Text.color (rgb 217 0 0)
-            |> Text.height 36
-            |> Text.leftAligned
+    , text (Text.fromString "THIS IS A GAME"
+              |> Text.color (rgb 217 0 0)
+              |> Text.height 36
       )
     ]
 
