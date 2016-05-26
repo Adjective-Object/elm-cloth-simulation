@@ -1,4 +1,5 @@
-module Primitives where
+module Primitives exposing (..)  -- comment for synax highlighting where
+
 
 {-|
 provides primitive math & physics objets, as well as methods for manipulating 

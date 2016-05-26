@@ -1,17 +1,16 @@
-module Cloth where
+module Cloth exposing (..) -- comment for synax highlighting where
 
 import Primitives exposing (..)
 import Utils exposing (..)
 import Color exposing (..)
-import Graphics.Collage exposing (..)
-import Graphics.Element exposing (..)
+import Collage exposing (..)
+import Element exposing (..)
 import List
-import Time exposing (inSeconds, fps, every, second)
-import Signal
+import Time exposing (second)
 import Array exposing (Array, map, indexedMap, foldl,
               length, get, fromList, empty, 
               toList, append)
-import Debug exposing (log, watch, crash)
+import Debug exposing (log, crash)
 
 type alias Spring = {index_a:Int, index_b:Int, k:Float, len:Float}
 type alias Cloth =  { pointmasses:Array PointMass
@@ -65,11 +64,7 @@ addSpringForce pointmasses spring forces =
   in indexedMap (applyForce rootforce a b) forces
 
 springForces:Cloth->Array Point
-springForces cloth = 
-  let watch1 = (watch "cloth pointmasses" cloth.pointmasses)
-      watch2 = (watch "num pointmasses" <| Array.length cloth.pointmasses)
-      watch3 = (watch "springs" <| cloth.springs)
-  in foldl (addSpringForce cloth.pointmasses)
+springForces cloth = foldl (addSpringForce cloth.pointmasses)
       (filledArray (Point 0 0) (length cloth.pointmasses))
       cloth.springs
 
@@ -96,23 +91,23 @@ updateClothVelocity forces cloth time =
             if (clothpoint.fixed)
               then clothpoint
               else {clothpoint |
-                  velocity <- scalePoint (cloth.damping_factor) new_velocity,
-                  last_force <- force})
+                  velocity = scalePoint (cloth.damping_factor) new_velocity,
+                  last_force = force})
           (zip3 newvels cloth.pointmasses forces)
 
   in  {cloth |
-        pointmasses <- newPointMasses
-      , springs <- cloth.springs 
+        pointmasses = newPointMasses
+      , springs = cloth.springs 
       }
 
 -- moves each of the pointmasses in the cloth by the appropriate distance
 -- as given by their velocity
 updateClothPosition:Cloth->Float->Cloth
 updateClothPosition cloth dt =
-  {cloth | pointmasses <-
+  {cloth | pointmasses =
     map (\ptmass ->
           {ptmass | 
-            loc <- addPoints 
+            loc = addPoints 
                       ptmass.loc 
                       (scalePoint dt ptmass.velocity)})
       cloth.pointmasses}
@@ -197,21 +192,21 @@ rectCloth   (offset_x, offset_y)
           (fromList [0 .. cloth_width * cloth_height - 1]))
   in { default_cloth | 
       --generate the array of points
-        pointmasses <- 
+        pointmasses = 
           (map (\(x_int, y_int) -> 
             let x = toFloat x_int
                 y = toFloat y_int
             in {default_pointmass | 
-                  loc <- (Point
+                  loc = (Point
                         (offset_x + x * spring_len)
                         (offset_y + y * spring_len))
-                  , fixed <- ( (x_int == 0 || x_int == cloth_width - 1) 
+                  , fixed = ( (x_int == 0 || x_int == cloth_width - 1) 
                             && (y_int == cloth_height - 1))
-                  , mass <- point_mass
+                  , mass = point_mass
                 }) coords)
 
       -- and the springs containing those points   
-      , springs <- 
+      , springs = 
         (let  diag_dist : Float
               diag_dist = (dist origin (Point spring_len spring_len))
               connections:Array (List (Spring))
@@ -245,5 +240,5 @@ rectCloth   (offset_x, offset_y)
                   coords)
         in fromList (foldl (++) [] connections))
 
-      , damping_factor <- damping_factor}
+      , damping_factor = damping_factor}
       

@@ -1,4 +1,5 @@
-module Utils where
+module Utils exposing (..)  -- comment for synax highlighting where
+
 
 {-|
 Utilities module
