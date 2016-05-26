@@ -23,7 +23,7 @@ them
 import Array exposing (Array, map, indexedMap, foldl,
               length, get, fromList, empty, 
               toList, append)
-import Utils
+import Utils exposing (fastSqrt)
 
 {-| 2 dimensional point -}
 type alias Point = {x:Float, y:Float}
@@ -79,7 +79,7 @@ gravityArray ptmasses =
 
 {-| gets the distance between two points -}
 dist:Point->Point->Float
-dist a b = Utils.sqrt ((a.x-b.x)^2 + (b.y-a.y)^2)
+dist a b = fastSqrt ((a.x-b.x)^2 + (b.y-a.y)^2)
 
 {-| gets the angle between the two points -}
 angle:Point->Point->Float

@@ -2,6 +2,7 @@ import Color exposing (..)
 import Collage exposing (..)
 import Element exposing (..)
 import List
+import Text
 import Html exposing (Html)
 import Html.App exposing (program)
 import AnimationFrame exposing (..)
@@ -23,26 +24,21 @@ type Input = Tick Time
 -- step model
 step: Input -> GameState -> GameState
 step (Tick dt) state =
-  {state | cloth = Cloth.updateCloth state.cloth }
+  {state | cloth = Cloth.updateCloth state.cloth dt }
 
 -- render gamestate at width and height
-render : (Int,Int) -> GameState -> Element
-render (w,h) state =
-  collage w h
-    [ rect (toFloat w) (toFloat h)
-            |> filled (rgb 46 9 39)
-    , Cloth.drawCloth state.cloth (rgb 217 0 0)
-    , (show "THIS IS A GAME"
-              --|> Text.color (rgb 217 0 0)
-              --|> Text.height 36
-      )
-    ]
+render : (Int,Int) -> GameState -> Form
+render (w,h) state = Cloth.drawCloth state.cloth (rgb 217 0 0)
+
+screenWidth = Window.width
+screenHeight = Window.height
 
 view : GameState -> Html Input
 view model = collage
-  (floor width) (floor height)
-  [ rect width height |> filled black
-  , render (width, height) model
+  (floor screenWidth) (floor screenHeight)
+  [ rect screenWidth screenHeight |> filled black
+  , render (screenWidth, screenHeight) model
+  , text (Text.fromString "THIS IS A GAME")
   ]
   |> Element.toHtml 
 
@@ -54,5 +50,5 @@ main = program
     { init = (initialState, Cmd.none)
     , update = \msg model -> (step msg model, Cmd.none)
     , subscriptions = subscriptions
-    , view = render
+    , view = view
     }
