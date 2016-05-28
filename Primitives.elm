@@ -72,9 +72,9 @@ similarTri original hypotenuse =
     in scalePoint ratio original
 
 {-| finds the force of gravity applied by each point to each pointmass -}
-gravityArray:Array PointMass->Array Point
-gravityArray ptmasses = 
-  map (\ ptmas -> scalePoint ptmas.mass (Point 0 -9.8)) ptmasses 
+gravityArray:Array PointMass->Float->Array Point
+gravityArray ptmasses gravity = 
+  map (\ ptmas -> scalePoint ptmas.mass (Point 0 gravity)) ptmasses 
 
 
 {-| gets the distance between two points -}

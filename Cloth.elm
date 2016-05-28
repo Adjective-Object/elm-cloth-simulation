@@ -5,7 +5,7 @@ import Utils exposing (..)
 import Color exposing (..)
 import Collage exposing (..)
 import Element exposing (..)
-import List
+import List 
 import Time exposing (second)
 import Array exposing (Array, map, indexedMap, foldl,
               length, get, fromList, empty, 
@@ -15,7 +15,8 @@ import Debug exposing (log, crash)
 type alias Spring = {index_a:Int, index_b:Int, k:Float, len:Float}
 type alias Cloth =  { pointmasses:Array PointMass
                     , springs:Array Spring
-                    , damping_factor:Float }
+                    , damping_factor:Float
+                    , gravity: Point }
 
 
 default_spring = {  index_a = -1,
@@ -23,7 +24,7 @@ default_spring = {  index_a = -1,
                     k = 1.0,
                     len = 1.0}
 
-default_cloth = (Cloth (fromList []) (fromList []) 0.99)
+default_cloth = (Cloth (fromList []) (fromList []) 0.99 (Point 0 -9.8))
 
 
 (!|):Array a->Int->a
@@ -83,7 +84,8 @@ updateClothVelocity:Array Point->Cloth->Float->Cloth
 updateClothVelocity forces cloth time = 
   let newvels = map
         (\ (force, ptmass) -> 
-          resultingVelocity ptmass force time)
+          resultingVelocity ptmass force time `addPoints`
+          (scalePoint time cloth.gravity))
         (zip forces cloth.pointmasses)
 
       newPointMasses = map 
@@ -118,19 +120,12 @@ updateCloth previous_cloth dtime_millis =
   let 
     -- at most a dt of 0.2 seconds to avoid explosion in laggy situations
     dt = (*) 2 <| min (dtime_millis / 500) 0.04
-    grav_forces: Array Point
-    grav_forces = gravityArray (previous_cloth.pointmasses)
-
     cloth_forces:Array Point
     cloth_forces = springForces 
                       previous_cloth
 
-    sum_forces = map 
-                  (\ (g_force, c_force) -> addPoints c_force g_force)
-                  (zip grav_forces cloth_forces)
-
     cloth_with_velocities:Cloth
-    cloth_with_velocities = updateClothVelocity sum_forces previous_cloth dt
+    cloth_with_velocities = updateClothVelocity cloth_forces previous_cloth dt
   in updateClothPosition cloth_with_velocities dt
 
 
@@ -157,39 +152,56 @@ drawCloth cloth color =
                         else (outlined (solid color)))
                     |> (move (ptms.loc.x, ptms.loc.y)))
         ptdb))
-      ++ 
-      (toList (map 
-        (\ptms -> 
-          let dest = addPoints (ptms.loc) (ptms.last_force)
-          in  traced
-              (solid (complement color))
-              (path [ (ptms.loc.x, ptms.loc.y) 
-                    , (dest.x, dest.y)]))
-        ptdb))
-      ++ 
-      (toList (map 
-        (\ptms -> 
-          let dest = addPoints (ptms.loc) (ptms.velocity)
-          in  traced
-              (solid yellow)
-              (path [ (ptms.loc.x, ptms.loc.y) 
-                    , (dest.x, dest.y)]))
-        ptdb))
+      --++ 
+      --(toList (map 
+      --  (\ptms -> 
+      --    let dest = addPoints (ptms.loc) (ptms.last_force)
+      --    in  traced
+      --        (solid (complement color))
+      --        (path [ (ptms.loc.x, ptms.loc.y) 
+      --              , (dest.x, dest.y)]))
+      --  ptdb))
+      --++ 
+      --(toList (map 
+      --  (\ptms -> 
+      --    let dest = addPoints (ptms.loc) (ptms.velocity)
+      --    in  traced
+      --        (solid yellow)
+      --        (path [ (ptms.loc.x, ptms.loc.y) 
+      --              , (dest.x, dest.y)]))
+      --  ptdb))
     )
 
 ---------------------------- higher level logic stuff
 
+type alias ClothParams = 
+  { offsets : (Float, Float)
+  , dimensions : (Int, Int)
+  , point_mass : Float
+  , spring_len : Float
+  , spring_k : Float
+  , damping_factor : Float
+  , gravity : Point
+  , fixed_points : List (Int, Int)
+  }
+
 -- create a rectangular piece of cloth
-rectCloth:(Float, Float)->(Int,Int)->Float->Float->Float->Float->Cloth
-rectCloth   (offset_x, offset_y) 
-            (cloth_width, cloth_height) 
-            point_mass
-            spring_len spring_k
-            damping_factor = 
-  let coords:Array (Int, Int)
+rectCloth:ClothParams->Cloth
+rectCloth params = 
+  let (offset_x, offset_y) = params.offsets
+      (cloth_width, cloth_height) = params.dimensions
+      point_mass = params.point_mass
+      spring_len = params.spring_len
+      spring_k = params.spring_k
+      damping_factor = params.damping_factor
+      gravity = params.gravity
+
+      coords:Array (Int, Int)
       coords = log "coords" <|
         (map (\ n -> (n % cloth_width, n//cloth_width)) 
           (fromList [0 .. cloth_width * cloth_height - 1]))
+      x_origin = (offset_x - toFloat cloth_width * spring_len) / 2
+      y_origin = (offset_y - toFloat cloth_height * spring_len) / 2
   in { default_cloth | 
       --generate the array of points
         pointmasses = 
@@ -198,10 +210,9 @@ rectCloth   (offset_x, offset_y)
                 y = toFloat y_int
             in {default_pointmass | 
                   loc = (Point
-                        (offset_x + x * spring_len)
-                        (offset_y + y * spring_len))
-                  , fixed = ( (x_int == 0 || x_int == cloth_width - 1) 
-                            && (y_int == cloth_height - 1))
+                        (x_origin + x * spring_len)
+                        (y_origin + y * spring_len))
+                  , fixed = (x_int, y_int) `List.member` params.fixed_points
                   , mass = point_mass
                 }) coords)
 
@@ -240,5 +251,5 @@ rectCloth   (offset_x, offset_y)
                   coords)
         in fromList (foldl (++) [] connections))
 
-      , damping_factor = damping_factor}
-      
+      , damping_factor = damping_factor
+      , gravity = gravity}
