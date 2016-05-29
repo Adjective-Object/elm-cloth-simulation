@@ -1,4 +1,4 @@
-module Utils exposing (fastSqrt, zip, zip3, filledArray)  -- where
+module Utils exposing (..)  -- where
 
 {-|
 Utilities module
@@ -22,3 +22,19 @@ fastSqrt = Native.OptMath.sqrt
 {-| Array of size l, filled with a specified value -}
 filledArray:x->Int->Array x
 filledArray value l = indexedMap (\ index n -> value) (fromList [0..l]) 
+
+indexList:List a->List(Int, a)
+indexList a = List.indexedMap (,) a
+
+indexArray:Array a->Array(Int, a)
+indexArray a = Array.indexedMap (,) a
+
+(!|):Array a->Int->a
+(!|) arr ind = case get ind arr of
+                Just x -> x
+                Nothing -> Debug.crash <| 
+                  "crash because we tried to get [" 
+                  ++ toString ind 
+                  ++ "] from array len " 
+                  ++ toString (Array.length arr)
+                  ++ "\n\n" ++ toString arr

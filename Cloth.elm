@@ -12,7 +12,7 @@ import Array exposing (Array, map, indexedMap, foldl,
               toList, append)
 import Debug exposing (log, crash)
 
-type alias Spring = {index_a:Int, index_b:Int, k:Float, len:Float}
+type alias Spring = { index_a:Int, index_b:Int, k:Float, len:Float }
 type alias Cloth =  { pointmasses:Array PointMass
                     , springs:Array Spring
                     , damping_factor:Float
@@ -25,17 +25,6 @@ default_spring = {  index_a = -1,
                     len = 1.0}
 
 default_cloth = (Cloth (fromList []) (fromList []) 0.99 (Point 0 -9.8))
-
-
-(!|):Array a->Int->a
-(!|) arr ind = case get ind arr of
-                Just x -> x
-                Nothing -> crash <| 
-                  "crash because we tried to get [" 
-                  ++ toString ind 
-                  ++ "] from array len " 
-                  ++ toString (length arr)
-                  ++ "\n\n" ++ toString arr
 
 -- returns the force the spring exterts on pointmass a
 -- the force exerted on pointmass b is just the inverse of a.
@@ -107,8 +96,9 @@ updateClothVelocity forces cloth time =
 updateClothPosition:Cloth->Float->Cloth
 updateClothPosition cloth dt =
   {cloth | pointmasses =
-    map (\ptmass ->
-          {ptmass | 
+    map (\ptmass -> if ptmass.fixed
+      then ptmass
+      else { ptmass | 
             loc = addPoints 
                       ptmass.loc 
                       (scalePoint dt ptmass.velocity)})
