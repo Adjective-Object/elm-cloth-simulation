@@ -1,5 +1,7 @@
 module Main exposing (..)
 
+-- where
+
 import Color exposing (..)
 import Collage exposing (..)
 import Element exposing (..)
@@ -8,6 +10,8 @@ import Window
 import Text
 import Task
 import Html exposing (Html)
+import Html.Attributes exposing (type', defaultValue, id, max, min)
+import Html.Events exposing (on, targetValue)
 import Html.App exposing (program)
 import AnimationFrame exposing (..)
 import Time exposing (Time)
@@ -31,6 +35,7 @@ import Primitives exposing (Point, dist)
 import Utils exposing (indexArray, (!|))
 import Mouse
 import Debug
+import Json.Decode as Json
 
 
 -- define the gamestate
@@ -71,6 +76,7 @@ type Msg
     | MouseMove Mouse.Position
     | MouseDown Mouse.Position
     | MouseUp Mouse.Position
+    | AdjustGravity Float
 
 
 
@@ -82,8 +88,8 @@ render state =
     Cloth.drawCloth state.cloth (rgb 217 0 0)
 
 
-view : GameState -> Html Msg
-view model =
+viewCollage : GameState -> Html Msg
+viewCollage model =
     collage model.frame.width
         model.frame.height
         [ rect (toFloat model.frame.width)
@@ -96,6 +102,42 @@ view model =
             )
         ]
         |> Element.toHtml
+
+
+viewSliders : GameState -> Html Msg
+viewSliders model =
+    let
+        decodeStringToParam str =
+            case String.toFloat str of
+                Err e ->
+                    AdjustGravity 0
+
+                Ok v ->
+                    AdjustGravity v
+    in
+        Html.div [ id "parameters" ]
+            [ Html.form []
+                [ Html.input
+                    [ type' "range"
+                    , Html.Attributes.min "-100"
+                    , Html.Attributes.max "100"
+                    , defaultValue <| toString model.cloth.gravity.y
+                    , on "input"
+                        (Json.map decodeStringToParam
+                            (Json.at [ "target", "value" ] Json.string)
+                        )
+                    ]
+                    []
+                ]
+            ]
+
+
+view : GameState -> Html Msg
+view model =
+    Html.div []
+        [ viewCollage model
+        , viewSliders model
+        ]
 
 
 subscriptions : GameState -> Sub Msg
@@ -193,19 +235,17 @@ fixHeld state =
 
 releasePoint state =
     let
+        isNewPointFixed =
+            case state.heldPointWasFixed of
+                Just is_fixed ->
+                    is_fixed
+
+                Nothing ->
+                    False
+
         state_ptfixed =
             applyToHeld state
-                (\pt ->
-                    { pt
-                        | fixed =
-                            case state.heldPointWasFixed of
-                                Just is_fixed ->
-                                    is_fixed
-
-                                Nothing ->
-                                    False
-                    }
-                )
+                (\pt -> { pt | fixed = isNewPointFixed })
     in
         { state_ptfixed | heldPointIndex = Nothing }
 
@@ -241,6 +281,23 @@ step msg state =
 
                 Just ind ->
                     movePoint state (screenToCanvas state coords)
+
+        AdjustGravity grav ->
+            let
+                cloth =
+                    state.cloth
+
+                newGrav =
+                    log { x = cloth.gravity.x, y = grav }
+
+                newCloth =
+                    { cloth | gravity = newGrav }
+            in
+                { state | cloth = newCloth }
+
+
+
+--_ -> state
 
 
 screenToCanvas : GameState -> Mouse.Position -> Point
