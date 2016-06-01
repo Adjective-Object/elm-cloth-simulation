@@ -29,6 +29,18 @@ type alias Spring =
     { index_a : Int, index_b : Int, k : Float, len : Float }
 
 
+type alias ClothParams =
+    { offsets : Point
+    , dimensions : ( Int, Int )
+    , point_mass : Float
+    , spring_len : Float
+    , spring_k : Float
+    , damping_factor : Float
+    , gravity : Point
+    , fixed_points : Maybe (List ( Int, Int ))
+    }
+
+
 type alias Cloth =
     { pointmasses : Array PointMass
     , springs : Array Spring
@@ -265,29 +277,17 @@ drawCloth cloth color =
 
 
 ---------------------------- higher level logic stuff
-
-
-type alias ClothParams =
-    { offsets : ( Float, Float )
-    , dimensions : ( Int, Int )
-    , point_mass : Float
-    , spring_len : Float
-    , spring_k : Float
-    , damping_factor : Float
-    , gravity : Point
-    , fixed_points : List ( Int, Int )
-    }
-
-
-
 -- create a rectangular piece of cloth
 
 
 rectCloth : ClothParams -> Cloth
 rectCloth params =
     let
-        ( offset_x, offset_y ) =
-            params.offsets
+        offset_x =
+            params.offsets.x
+
+        offset_y =
+            params.offsets.y
 
         ( cloth_width, cloth_height ) =
             params.dimensions
@@ -337,7 +337,13 @@ rectCloth params =
                                     (Point (x_origin + x * spring_len)
                                         (y_origin + y * spring_len)
                                     )
-                                , fixed = ( x_int, y_int ) `List.member` params.fixed_points
+                                , fixed =
+                                    case params.fixed_points of
+                                        Just points ->
+                                            ( x_int, y_int ) `List.member` points
+
+                                        Nothing ->
+                                            (x_int == 0 || x_int == cloth_width - 1) && y_int == cloth_height - 1
                                 , mass = point_mass
                             }
                     )

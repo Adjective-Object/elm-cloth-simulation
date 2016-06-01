@@ -47,26 +47,31 @@ type alias GameState =
     , heldPointIndex : Maybe Int
     , heldPointWasFixed : Maybe Bool
     , mousePosition : Point
+    , params : Cloth.ClothParams
+    }
+
+
+initialParams : Cloth.ClothParams
+initialParams =
+    { offsets = Point 0 0
+    , dimensions = ( 13, 6 )
+    , point_mass = 0.1
+    , spring_len = 20
+    , spring_k = 3
+    , damping_factor = 0.96
+    , gravity = Point 0 -19.6
+    , fixed_points = Nothing
     }
 
 
 initialState : GameState
 initialState =
-    { cloth =
-        Cloth.rectCloth
-            { offsets = ( 0, 0 )
-            , dimensions = ( 13, 6 )
-            , point_mass = 0.1
-            , spring_len = 20
-            , spring_k = 3
-            , damping_factor = 0.96
-            , gravity = Point 0 -19.6
-            , fixed_points = [ ( 0, 5 ), ( 12, 5 ) ]
-            }
+    { cloth = Cloth.rectCloth initialParams
     , frame = { width = 800, height = 600 }
     , heldPointIndex = Nothing
     , heldPointWasFixed = Nothing
     , mousePosition = Point 0 0
+    , params = initialParams
     }
 
 
@@ -76,16 +81,144 @@ type Msg
     | MouseMove Mouse.Position
     | MouseDown Mouse.Position
     | MouseUp Mouse.Position
-    | AdjustGravity Float
+    | AdjustParameter SimulationSetting
 
 
+type SimulationSetting
+    = ClothWidth Int
+    | ClothHeight Int
+    | PointMass Float
+    | SpringLen Float
+    | SpringK Float
+    | Damping Float
+    | GravityX Float
+    | GravityY Float
 
--- render gamestate at width and height
+
+type alias SimulationSlider =
+    { setting : Float -> SimulationSetting
+    , label : String
+    , min : Float
+    , max : Float
+    , step : Maybe Float
+    }
 
 
-render : GameState -> Form
-render state =
-    Cloth.drawCloth state.cloth (rgb 217 0 0)
+interfaceDesc : List SimulationSlider
+interfaceDesc =
+    [ { setting = ClothWidth << floor
+      , label = "width"
+      , min = 1
+      , max = 25
+      , step = Just 1
+      }
+    , { setting = ClothHeight << floor
+      , label = "height"
+      , min = 1
+      , max = 25
+      , step = Just 1
+      }
+    , { setting = PointMass
+      , label = "point mass"
+      , min = -2
+      , max = 2
+      , step = Nothing
+      }
+    , { setting = SpringLen
+      , label = "spring length"
+      , min = 0
+      , max = 100
+      , step = Nothing
+      }
+    , { setting = SpringK
+      , label = "spring k"
+      , min = 0
+      , max = 10
+      , step = Nothing
+      }
+    , { setting = Damping
+      , label = "damping factor"
+      , min = 0
+      , max = 1
+      , step = Nothing
+      }
+    , { setting = GravityX
+      , label = "gravity x"
+      , min = -30
+      , max = 30
+      , step = Nothing
+      }
+    , { setting = GravityY
+      , label = "gravity y"
+      , min = -30
+      , max = 30
+      , step = Nothing
+      }
+    ]
+
+
+adjustSimulationParams : SimulationSetting -> GameState -> GameState
+adjustSimulationParams param state =
+    let
+        cloth =
+            state.cloth
+
+        params =
+            state.params
+    in
+        case param of
+            ClothWidth w ->
+                let
+                    new_params =
+                        { params | dimensions = ( w, snd params.dimensions ) }
+                in
+                    { state | cloth = Cloth.rectCloth new_params, params = new_params }
+
+            ClothHeight h ->
+                let
+                    new_params =
+                        { params | dimensions = ( fst params.dimensions, h ) }
+                in
+                    { state | cloth = Cloth.rectCloth new_params, params = new_params }
+
+            PointMass mass ->
+                let
+                    new_params =
+                        { params | point_mass = mass }
+                in
+                    { state | cloth = Cloth.rectCloth new_params, params = new_params }
+
+            SpringLen l ->
+                let
+                    new_params =
+                        { params | spring_len = l }
+                in
+                    { state | cloth = Cloth.rectCloth new_params, params = new_params }
+
+            SpringK k ->
+                let
+                    new_params =
+                        { params | spring_k = k }
+                in
+                    { state | cloth = Cloth.rectCloth new_params, params = new_params }
+
+            Damping d ->
+                { state
+                    | cloth = { cloth | damping_factor = d }
+                    , params = { params | damping_factor = d }
+                }
+
+            GravityX x ->
+                { state
+                    | cloth = { cloth | gravity = Point x state.cloth.gravity.y }
+                    , params = { params | gravity = Point x state.params.gravity.y }
+                }
+
+            GravityY y ->
+                { state
+                    | cloth = { cloth | gravity = Point state.cloth.gravity.x y }
+                    , params = { params | gravity = Point state.params.gravity.x y }
+                }
 
 
 viewCollage : GameState -> Html Msg
@@ -104,32 +237,76 @@ viewCollage model =
         |> Element.toHtml
 
 
+getCurrent : (Float -> SimulationSetting) -> GameState -> Float
+getCurrent constructor model =
+    case (constructor 0) of
+        ClothWidth _ ->
+            toFloat <| fst model.params.dimensions
+
+        ClothHeight _ ->
+            toFloat <| snd model.params.dimensions
+
+        PointMass _ ->
+            model.params.point_mass
+
+        SpringLen _ ->
+            model.params.spring_len
+
+        SpringK _ ->
+            model.params.spring_k
+
+        Damping _ ->
+            model.cloth.damping_factor
+
+        GravityX _ ->
+            model.cloth.gravity.x
+
+        GravityY _ ->
+            model.cloth.gravity.y
+
+
 viewSliders : GameState -> Html Msg
 viewSliders model =
     let
-        decodeStringToParam str =
+        violentToFloat : String -> Float
+        violentToFloat str =
             case String.toFloat str of
                 Err e ->
-                    AdjustGravity 0
+                    0
 
                 Ok v ->
-                    AdjustGravity v
-    in
-        Html.div [ id "parameters" ]
-            [ Html.form []
-                [ Html.input
+                    v
+
+        makeSlider : GameState -> SimulationSlider -> Html Msg
+        makeSlider model slider =
+            Html.div []
+                [ Html.label [ Html.Attributes.name slider.label ]
+                    [ Html.text slider.label ]
+                , Html.input
                     [ type' "range"
-                    , Html.Attributes.min "-100"
-                    , Html.Attributes.max "100"
-                    , defaultValue <| toString model.cloth.gravity.y
+                    , Html.Attributes.name <| slider.label
+                    , Html.Attributes.min <| toString slider.min
+                    , Html.Attributes.max <| toString slider.max
+                    , defaultValue <| toString <| getCurrent slider.setting model
                     , on "input"
-                        (Json.map decodeStringToParam
+                        (Json.map (AdjustParameter << slider.setting << violentToFloat)
                             (Json.at [ "target", "value" ] Json.string)
                         )
                     ]
                     []
                 ]
-            ]
+    in
+        Html.div [ id "parameters" ]
+            [ Html.form [] (List.map (makeSlider model) interfaceDesc) ]
+
+
+
+-- render gamestate at width and height
+
+
+render : GameState -> Form
+render state =
+    Cloth.drawCloth state.cloth (rgb 217 0 0)
 
 
 view : GameState -> Html Msg
@@ -282,18 +459,8 @@ step msg state =
                 Just ind ->
                     movePoint state (screenToCanvas state coords)
 
-        AdjustGravity grav ->
-            let
-                cloth =
-                    state.cloth
-
-                newGrav =
-                    log { x = cloth.gravity.x, y = grav }
-
-                newCloth =
-                    { cloth | gravity = newGrav }
-            in
-                { state | cloth = newCloth }
+        AdjustParameter param ->
+            adjustSimulationParams param state
 
 
 
