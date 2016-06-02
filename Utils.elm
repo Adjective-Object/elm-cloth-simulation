@@ -9,7 +9,7 @@ Utilities module
 import Array exposing (Array, get, indexedMap, fromList, toList)
 import List
 import Color exposing (Color, hsla)
-import Native.OptMath
+import Native.OptMath exposing (sqrt)
 
 
 zip : Array a -> Array b -> Array ( a, b )
@@ -23,8 +23,7 @@ zip3 a b c =
         <| List.map3 (\a b c -> ( a, b, c )) (toList a) (toList b) (toList c)
 
 
-fastSqrt =
-    Native.OptMath.sqrt
+fastSqrt = sqrt
 
 
 {-| Array of size l, filled with a specified value

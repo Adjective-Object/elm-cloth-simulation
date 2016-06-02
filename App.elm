@@ -33,6 +33,7 @@ import Cloth
 import Platform.Cmd
 import Primitives exposing (Point, dist)
 import Utils exposing (indexArray, (!|))
+import ElmAbuse exposing (forceStyle)
 import Mouse
 import Debug
 import Json.Decode as Json
@@ -60,7 +61,7 @@ initialParams =
     , spring_k = 3
     , damping_factor = 0.96
     , gravity = Point 0 -19.6
-    , fixed_points = Nothing
+    , fixed_points = Nothing    
     }
 
 
@@ -82,6 +83,7 @@ type Msg
     | MouseDown Mouse.Position
     | MouseUp Mouse.Position
     | AdjustParameter SimulationSetting
+    | NoOp
 
 
 type SimulationSetting
@@ -165,6 +167,13 @@ adjustSimulationParams param state =
 
         params =
             state.params
+
+        toParams state new_params = 
+            { state 
+            | cloth = Cloth.rectCloth new_params
+            , heldPointIndex = Nothing
+            , heldPointWasFixed = Nothing
+            }
     in
         case param of
             ClothWidth w ->
@@ -172,35 +181,35 @@ adjustSimulationParams param state =
                     new_params =
                         { params | dimensions = ( w, snd params.dimensions ) }
                 in
-                    { state | cloth = Cloth.rectCloth new_params, params = new_params }
+                    toParams state new_params
 
             ClothHeight h ->
                 let
                     new_params =
                         { params | dimensions = ( fst params.dimensions, h ) }
                 in
-                    { state | cloth = Cloth.rectCloth new_params, params = new_params }
+                    toParams state new_params
 
             PointMass mass ->
                 let
                     new_params =
                         { params | point_mass = mass }
                 in
-                    { state | cloth = Cloth.rectCloth new_params, params = new_params }
+                    toParams state new_params
 
             SpringLen l ->
                 let
                     new_params =
                         { params | spring_len = l }
                 in
-                    { state | cloth = Cloth.rectCloth new_params, params = new_params }
+                    toParams state new_params
 
             SpringK k ->
                 let
                     new_params =
                         { params | spring_k = k }
                 in
-                    { state | cloth = Cloth.rectCloth new_params, params = new_params }
+                    toParams state new_params
 
             Damping d ->
                 { state
@@ -287,6 +296,9 @@ viewSliders model =
                     , Html.Attributes.name <| slider.label
                     , Html.Attributes.min <| toString slider.min
                     , Html.Attributes.max <| toString slider.max
+                    , Html.Attributes.step <| case slider.step of 
+                        Just step   -> toString step
+                        Nothing     -> "0.001"
                     , defaultValue <| toString <| getCurrent slider.setting model
                     , on "input"
                         (Json.map (AdjustParameter << slider.setting << violentToFloat)
@@ -308,7 +320,6 @@ render : GameState -> Form
 render state =
     Cloth.drawCloth state.cloth (rgb 217 0 0)
 
-
 view : GameState -> Html Msg
 view model =
     Html.div []
@@ -329,9 +340,18 @@ subscriptions state =
 
 
 fireInit =
-    Task.perform (\size -> Resize size)
-        (\size -> Resize size)
-        Window.size
+    let readSize = 
+            Task.perform 
+                (\size -> Resize size)
+                (\size -> Resize size)
+                Window.size 
+        injectStyles = 
+            Task.perform 
+                (\ _ -> NoOp)
+                (\ _ -> NoOp)
+                (forceStyle [ "style.css" ])
+    in Cmd.batch [injectStyles, readSize]
+
 
 
 tup : Point -> ( Float, Float )
@@ -462,6 +482,7 @@ step msg state =
         AdjustParameter param ->
             adjustSimulationParams param state
 
+        NoOp -> state
 
 
 --_ -> state
