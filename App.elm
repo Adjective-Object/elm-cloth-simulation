@@ -61,7 +61,7 @@ initialParams =
     , spring_k = 3
     , damping_factor = 0.96
     , gravity = Point 0 -19.6
-    , fixed_points = Nothing    
+    , fixed_points = Nothing
     }
 
 
@@ -168,11 +168,11 @@ adjustSimulationParams param state =
         params =
             state.params
 
-        toParams state new_params = 
-            { state 
-            | cloth = Cloth.rectCloth new_params
-            , heldPointIndex = Nothing
-            , heldPointWasFixed = Nothing
+        toParams state new_params =
+            { state
+                | cloth = Cloth.rectCloth new_params
+                , heldPointIndex = Nothing
+                , heldPointWasFixed = Nothing
             }
     in
         case param of
@@ -296,9 +296,13 @@ viewSliders model =
                     , Html.Attributes.name <| slider.label
                     , Html.Attributes.min <| toString slider.min
                     , Html.Attributes.max <| toString slider.max
-                    , Html.Attributes.step <| case slider.step of 
-                        Just step   -> toString step
-                        Nothing     -> "0.001"
+                    , Html.Attributes.step
+                        <| case slider.step of
+                            Just step ->
+                                toString step
+
+                            Nothing ->
+                                "0.001"
                     , defaultValue <| toString <| getCurrent slider.setting model
                     , on "input"
                         (Json.map (AdjustParameter << slider.setting << violentToFloat)
@@ -320,6 +324,7 @@ render : GameState -> Form
 render state =
     Cloth.drawCloth state.cloth (rgb 217 0 0)
 
+
 view : GameState -> Html Msg
 view model =
     Html.div []
@@ -340,18 +345,18 @@ subscriptions state =
 
 
 fireInit =
-    let readSize = 
-            Task.perform 
+    let
+        readSize =
+            Task.perform (\size -> Resize size)
                 (\size -> Resize size)
-                (\size -> Resize size)
-                Window.size 
-        injectStyles = 
-            Task.perform 
-                (\ _ -> NoOp)
-                (\ _ -> NoOp)
-                (forceStyle [ "style.css" ])
-    in Cmd.batch [injectStyles, readSize]
+                Window.size
 
+        injectStyles =
+            Task.perform (\_ -> NoOp)
+                (\_ -> NoOp)
+                (forceStyle [ "style.css" ])
+    in
+        Cmd.batch [ injectStyles, readSize ]
 
 
 tup : Point -> ( Float, Float )
@@ -482,7 +487,9 @@ step msg state =
         AdjustParameter param ->
             adjustSimulationParams param state
 
-        NoOp -> state
+        NoOp ->
+            state
+
 
 
 --_ -> state

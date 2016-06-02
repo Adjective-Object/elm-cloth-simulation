@@ -23,7 +23,8 @@ zip3 a b c =
         <| List.map3 (\a b c -> ( a, b, c )) (toList a) (toList b) (toList c)
 
 
-fastSqrt = sqrt
+fastSqrt =
+    sqrt
 
 
 {-| Array of size l, filled with a specified value
