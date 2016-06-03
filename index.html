@@ -3734,8 +3734,8 @@ _adjective_object$elm_game$Utils_ops['!|'] = F2(
 			return _elm_lang$core$Native_Utils.crashCase(
 				'Utils',
 				{
-					start: {line: 33, column: 16},
-					end: {line: 40, column: 44}
+					start: {line: 49, column: 5},
+					end: {line: 60, column: 32}
 				},
 				_p0)(
 				A2(
@@ -3786,7 +3786,7 @@ var _adjective_object$elm_game$Utils$filledArray = F2(
 			_elm_lang$core$Array$fromList(
 				_elm_lang$core$Native_List.range(0, l)));
 	});
-var _adjective_object$elm_game$Utils$fastSqrt = _adjective_object$elm_game$Native_OptMath.sqrt;
+var _adjective_object$elm_game$Utils$fastSqrt = _elm_lang$core$Basics$sqrt;
 var _adjective_object$elm_game$Utils$zip3 = F3(
 	function (a, b, c) {
 		return _elm_lang$core$Array$fromList(
@@ -10165,6 +10165,10 @@ var _adjective_object$elm_game$Cloth$Spring = F4(
 	function (a, b, c, d) {
 		return {index_a: a, index_b: b, k: c, len: d};
 	});
+var _adjective_object$elm_game$Cloth$ClothParams = F8(
+	function (a, b, c, d, e, f, g, h) {
+		return {offsets: a, dimensions: b, point_mass: c, spring_len: d, spring_k: e, damping_factor: f, gravity: g, fixed_points: h};
+	});
 var _adjective_object$elm_game$Cloth$Cloth = F4(
 	function (a, b, c, d) {
 		return {pointmasses: a, springs: b, damping_factor: c, gravity: d};
@@ -10202,30 +10206,36 @@ var _adjective_object$elm_game$Cloth$rectCloth = function (params) {
 			},
 			_elm_lang$core$Array$fromList(
 				_elm_lang$core$Native_List.range(0, (cloth_width * cloth_height) - 1))));
-	var _p6 = params.offsets;
-	var offset_x = _p6._0;
-	var offset_y = _p6._1;
-	var x_origin = (offset_x - (_elm_lang$core$Basics$toFloat(cloth_width) * spring_len)) / 2;
+	var offset_y = params.offsets.y;
 	var y_origin = (offset_y - (_elm_lang$core$Basics$toFloat(cloth_height) * spring_len)) / 2;
+	var offset_x = params.offsets.x;
+	var x_origin = (offset_x - (_elm_lang$core$Basics$toFloat(cloth_width) * spring_len)) / 2;
 	return _elm_lang$core$Native_Utils.update(
 		_adjective_object$elm_game$Cloth$default_cloth,
 		{
 			pointmasses: A2(
 				_elm_lang$core$Array$map,
-				function (_p7) {
-					var _p8 = _p7;
-					var _p10 = _p8._1;
-					var _p9 = _p8._0;
+				function (_p6) {
+					var _p7 = _p6;
+					var _p10 = _p7._1;
+					var _p9 = _p7._0;
 					var y = _elm_lang$core$Basics$toFloat(_p10);
 					var x = _elm_lang$core$Basics$toFloat(_p9);
 					return _elm_lang$core$Native_Utils.update(
 						_adjective_object$elm_game$Primitives$default_pointmass,
 						{
 							loc: A2(_adjective_object$elm_game$Primitives$Point, x_origin + (x * spring_len), y_origin + (y * spring_len)),
-							fixed: A2(
-								_elm_lang$core$List$member,
-								{ctor: '_Tuple2', _0: _p9, _1: _p10},
-								params.fixed_points),
+							fixed: function () {
+								var _p8 = params.fixed_points;
+								if (_p8.ctor === 'Just') {
+									return A2(
+										_elm_lang$core$List$member,
+										{ctor: '_Tuple2', _0: _p9, _1: _p10},
+										_p8._0);
+								} else {
+									return (_elm_lang$core$Native_Utils.eq(_p9, 0) || _elm_lang$core$Native_Utils.eq(_p9, cloth_width - 1)) && _elm_lang$core$Native_Utils.eq(_p10, cloth_height - 1);
+								}
+							}(),
 							mass: point_mass
 						});
 				},
@@ -10269,10 +10279,48 @@ var _adjective_object$elm_game$Cloth$rectCloth = function (params) {
 			gravity: gravity
 		});
 };
-var _adjective_object$elm_game$Cloth$ClothParams = F8(
-	function (a, b, c, d, e, f, g, h) {
-		return {offsets: a, dimensions: b, point_mass: c, spring_len: d, spring_k: e, damping_factor: f, gravity: g, fixed_points: h};
-	});
+// rsqrt provided by http://jsperf.com/fast-inverse-square-root
+var _adjective_object$elm_game$Native_ElmAbuse = function() {
+  function violentlyForceStyle(link_ident, hrefs) {
+    var links = document.getElementsByTagName('link');
+
+    console.log(link_ident, hrefs)
+
+    // remove old stylesheets
+    for (var l in links) {
+      if (links[l].rel == 'stylesheet' && 
+          hrefs.indexOf(links[l].href) !== -1) {
+        links[l].parentNode.removeChildNode(links[l]);
+      }
+    }
+    
+    // add stylesheets
+    var ind = 0;
+    while (hrefs['_'+ind] != _elm_lang$core$Native_List.Nil) {
+      var ln = document.createElement('link');
+
+      ln.setAttribute('href', hrefs['_'+ind]);
+      ln.setAttribute('type', 'text/css');
+      ln.setAttribute('rel', 'stylesheet');
+      ln.setAttribute('classNname', link_ident);
+
+      document.getElementsByTagName('head')[0].insertBefore(ln, null);
+      ind++;
+    }
+
+    return {
+      ctor: '_Task_succeed',
+      value: hrefs
+    };
+  }
+
+  return {
+    violentlyForceStyle: F2(violentlyForceStyle)
+  }
+}();
+var _adjective_object$elm_game$ElmAbuse$forceStyle = function (hrefs) {
+	return A2(_adjective_object$elm_game$Native_ElmAbuse.violentlyForceStyle, '__elm_abuse_', hrefs);
+};
 var _elm_lang$dom$Native_Dom = function() {
 
 function on(node)
@@ -10431,6 +10479,457 @@ var _elm_lang$window$Window$subMap = F2(
 			});
 	});
 _elm_lang$core$Native_Platform.effectManagers['Window'] = {pkg: 'elm-lang/window', init: _elm_lang$window$Window$init, onEffects: _elm_lang$window$Window$onEffects, onSelfMsg: _elm_lang$window$Window$onSelfMsg, tag: 'sub', subMap: _elm_lang$window$Window$subMap};
+var _elm_lang$html$Html_Attributes$attribute = _elm_lang$virtual_dom$VirtualDom$attribute;
+var _elm_lang$html$Html_Attributes$contextmenu = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$attribute, 'contextmenu', value);
+};
+var _elm_lang$html$Html_Attributes$property = _elm_lang$virtual_dom$VirtualDom$property;
+var _elm_lang$html$Html_Attributes$stringProperty = F2(
+	function (name, string) {
+		return A2(
+			_elm_lang$html$Html_Attributes$property,
+			name,
+			_elm_lang$core$Json_Encode$string(string));
+	});
+var _elm_lang$html$Html_Attributes$class = function (name) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'className', name);
+};
+var _elm_lang$html$Html_Attributes$id = function (name) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'id', name);
+};
+var _elm_lang$html$Html_Attributes$title = function (name) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'title', name);
+};
+var _elm_lang$html$Html_Attributes$accesskey = function ($char) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'accessKey',
+		_elm_lang$core$String$fromChar($char));
+};
+var _elm_lang$html$Html_Attributes$dir = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'dir', value);
+};
+var _elm_lang$html$Html_Attributes$draggable = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'draggable', value);
+};
+var _elm_lang$html$Html_Attributes$dropzone = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'dropzone', value);
+};
+var _elm_lang$html$Html_Attributes$itemprop = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'itemprop', value);
+};
+var _elm_lang$html$Html_Attributes$lang = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'lang', value);
+};
+var _elm_lang$html$Html_Attributes$tabindex = function (n) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'tabIndex',
+		_elm_lang$core$Basics$toString(n));
+};
+var _elm_lang$html$Html_Attributes$charset = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'charset', value);
+};
+var _elm_lang$html$Html_Attributes$content = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'content', value);
+};
+var _elm_lang$html$Html_Attributes$httpEquiv = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'httpEquiv', value);
+};
+var _elm_lang$html$Html_Attributes$language = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'language', value);
+};
+var _elm_lang$html$Html_Attributes$src = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'src', value);
+};
+var _elm_lang$html$Html_Attributes$height = function (value) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'height',
+		_elm_lang$core$Basics$toString(value));
+};
+var _elm_lang$html$Html_Attributes$width = function (value) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'width',
+		_elm_lang$core$Basics$toString(value));
+};
+var _elm_lang$html$Html_Attributes$alt = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'alt', value);
+};
+var _elm_lang$html$Html_Attributes$preload = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'preload', value);
+};
+var _elm_lang$html$Html_Attributes$poster = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'poster', value);
+};
+var _elm_lang$html$Html_Attributes$kind = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'kind', value);
+};
+var _elm_lang$html$Html_Attributes$srclang = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'srclang', value);
+};
+var _elm_lang$html$Html_Attributes$sandbox = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'sandbox', value);
+};
+var _elm_lang$html$Html_Attributes$srcdoc = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'srcdoc', value);
+};
+var _elm_lang$html$Html_Attributes$type$ = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'type', value);
+};
+var _elm_lang$html$Html_Attributes$value = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'value', value);
+};
+var _elm_lang$html$Html_Attributes$defaultValue = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'defaultValue', value);
+};
+var _elm_lang$html$Html_Attributes$placeholder = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'placeholder', value);
+};
+var _elm_lang$html$Html_Attributes$accept = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'accept', value);
+};
+var _elm_lang$html$Html_Attributes$acceptCharset = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'acceptCharset', value);
+};
+var _elm_lang$html$Html_Attributes$action = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'action', value);
+};
+var _elm_lang$html$Html_Attributes$autocomplete = function (bool) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'autocomplete',
+		bool ? 'on' : 'off');
+};
+var _elm_lang$html$Html_Attributes$autosave = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'autosave', value);
+};
+var _elm_lang$html$Html_Attributes$enctype = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'enctype', value);
+};
+var _elm_lang$html$Html_Attributes$formaction = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'formAction', value);
+};
+var _elm_lang$html$Html_Attributes$list = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'list', value);
+};
+var _elm_lang$html$Html_Attributes$minlength = function (n) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'minLength',
+		_elm_lang$core$Basics$toString(n));
+};
+var _elm_lang$html$Html_Attributes$maxlength = function (n) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'maxLength',
+		_elm_lang$core$Basics$toString(n));
+};
+var _elm_lang$html$Html_Attributes$method = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'method', value);
+};
+var _elm_lang$html$Html_Attributes$name = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'name', value);
+};
+var _elm_lang$html$Html_Attributes$pattern = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'pattern', value);
+};
+var _elm_lang$html$Html_Attributes$size = function (n) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'size',
+		_elm_lang$core$Basics$toString(n));
+};
+var _elm_lang$html$Html_Attributes$for = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'htmlFor', value);
+};
+var _elm_lang$html$Html_Attributes$form = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'form', value);
+};
+var _elm_lang$html$Html_Attributes$max = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'max', value);
+};
+var _elm_lang$html$Html_Attributes$min = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'min', value);
+};
+var _elm_lang$html$Html_Attributes$step = function (n) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'step', n);
+};
+var _elm_lang$html$Html_Attributes$cols = function (n) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'cols',
+		_elm_lang$core$Basics$toString(n));
+};
+var _elm_lang$html$Html_Attributes$rows = function (n) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'rows',
+		_elm_lang$core$Basics$toString(n));
+};
+var _elm_lang$html$Html_Attributes$wrap = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'wrap', value);
+};
+var _elm_lang$html$Html_Attributes$usemap = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'useMap', value);
+};
+var _elm_lang$html$Html_Attributes$shape = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'shape', value);
+};
+var _elm_lang$html$Html_Attributes$coords = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'coords', value);
+};
+var _elm_lang$html$Html_Attributes$challenge = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'challenge', value);
+};
+var _elm_lang$html$Html_Attributes$keytype = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'keytype', value);
+};
+var _elm_lang$html$Html_Attributes$align = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'align', value);
+};
+var _elm_lang$html$Html_Attributes$cite = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'cite', value);
+};
+var _elm_lang$html$Html_Attributes$href = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'href', value);
+};
+var _elm_lang$html$Html_Attributes$target = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'target', value);
+};
+var _elm_lang$html$Html_Attributes$downloadAs = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'download', value);
+};
+var _elm_lang$html$Html_Attributes$hreflang = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'hreflang', value);
+};
+var _elm_lang$html$Html_Attributes$media = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'media', value);
+};
+var _elm_lang$html$Html_Attributes$ping = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'ping', value);
+};
+var _elm_lang$html$Html_Attributes$rel = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'rel', value);
+};
+var _elm_lang$html$Html_Attributes$datetime = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'datetime', value);
+};
+var _elm_lang$html$Html_Attributes$pubdate = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'pubdate', value);
+};
+var _elm_lang$html$Html_Attributes$start = function (n) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'start',
+		_elm_lang$core$Basics$toString(n));
+};
+var _elm_lang$html$Html_Attributes$colspan = function (n) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'colSpan',
+		_elm_lang$core$Basics$toString(n));
+};
+var _elm_lang$html$Html_Attributes$headers = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'headers', value);
+};
+var _elm_lang$html$Html_Attributes$rowspan = function (n) {
+	return A2(
+		_elm_lang$html$Html_Attributes$stringProperty,
+		'rowSpan',
+		_elm_lang$core$Basics$toString(n));
+};
+var _elm_lang$html$Html_Attributes$scope = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'scope', value);
+};
+var _elm_lang$html$Html_Attributes$manifest = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'manifest', value);
+};
+var _elm_lang$html$Html_Attributes$boolProperty = F2(
+	function (name, bool) {
+		return A2(
+			_elm_lang$html$Html_Attributes$property,
+			name,
+			_elm_lang$core$Json_Encode$bool(bool));
+	});
+var _elm_lang$html$Html_Attributes$hidden = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'hidden', bool);
+};
+var _elm_lang$html$Html_Attributes$contenteditable = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'contentEditable', bool);
+};
+var _elm_lang$html$Html_Attributes$spellcheck = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'spellcheck', bool);
+};
+var _elm_lang$html$Html_Attributes$async = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'async', bool);
+};
+var _elm_lang$html$Html_Attributes$defer = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'defer', bool);
+};
+var _elm_lang$html$Html_Attributes$scoped = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'scoped', bool);
+};
+var _elm_lang$html$Html_Attributes$autoplay = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'autoplay', bool);
+};
+var _elm_lang$html$Html_Attributes$controls = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'controls', bool);
+};
+var _elm_lang$html$Html_Attributes$loop = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'loop', bool);
+};
+var _elm_lang$html$Html_Attributes$default = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'default', bool);
+};
+var _elm_lang$html$Html_Attributes$seamless = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'seamless', bool);
+};
+var _elm_lang$html$Html_Attributes$checked = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'checked', bool);
+};
+var _elm_lang$html$Html_Attributes$selected = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'selected', bool);
+};
+var _elm_lang$html$Html_Attributes$autofocus = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'autofocus', bool);
+};
+var _elm_lang$html$Html_Attributes$disabled = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'disabled', bool);
+};
+var _elm_lang$html$Html_Attributes$multiple = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'multiple', bool);
+};
+var _elm_lang$html$Html_Attributes$novalidate = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'noValidate', bool);
+};
+var _elm_lang$html$Html_Attributes$readonly = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'readOnly', bool);
+};
+var _elm_lang$html$Html_Attributes$required = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'required', bool);
+};
+var _elm_lang$html$Html_Attributes$ismap = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'isMap', value);
+};
+var _elm_lang$html$Html_Attributes$download = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'download', bool);
+};
+var _elm_lang$html$Html_Attributes$reversed = function (bool) {
+	return A2(_elm_lang$html$Html_Attributes$boolProperty, 'reversed', bool);
+};
+var _elm_lang$html$Html_Attributes$classList = function (list) {
+	return _elm_lang$html$Html_Attributes$class(
+		A2(
+			_elm_lang$core$String$join,
+			' ',
+			A2(
+				_elm_lang$core$List$map,
+				_elm_lang$core$Basics$fst,
+				A2(_elm_lang$core$List$filter, _elm_lang$core$Basics$snd, list))));
+};
+var _elm_lang$html$Html_Attributes$style = _elm_lang$virtual_dom$VirtualDom$style;
+var _elm_lang$html$Html_Events$keyCode = A2(_elm_lang$core$Json_Decode_ops[':='], 'keyCode', _elm_lang$core$Json_Decode$int);
+var _elm_lang$html$Html_Events$targetChecked = A2(
+	_elm_lang$core$Json_Decode$at,
+	_elm_lang$core$Native_List.fromArray(
+		['target', 'checked']),
+	_elm_lang$core$Json_Decode$bool);
+var _elm_lang$html$Html_Events$targetValue = A2(
+	_elm_lang$core$Json_Decode$at,
+	_elm_lang$core$Native_List.fromArray(
+		['target', 'value']),
+	_elm_lang$core$Json_Decode$string);
+var _elm_lang$html$Html_Events$defaultOptions = _elm_lang$virtual_dom$VirtualDom$defaultOptions;
+var _elm_lang$html$Html_Events$onWithOptions = _elm_lang$virtual_dom$VirtualDom$onWithOptions;
+var _elm_lang$html$Html_Events$on = _elm_lang$virtual_dom$VirtualDom$on;
+var _elm_lang$html$Html_Events$onFocus = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'focus',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onBlur = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'blur',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onSubmitOptions = _elm_lang$core$Native_Utils.update(
+	_elm_lang$html$Html_Events$defaultOptions,
+	{preventDefault: true});
+var _elm_lang$html$Html_Events$onSubmit = function (msg) {
+	return A3(
+		_elm_lang$html$Html_Events$onWithOptions,
+		'submit',
+		_elm_lang$html$Html_Events$onSubmitOptions,
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onCheck = function (tagger) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'change',
+		A2(_elm_lang$core$Json_Decode$map, tagger, _elm_lang$html$Html_Events$targetChecked));
+};
+var _elm_lang$html$Html_Events$onInput = function (tagger) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'input',
+		A2(_elm_lang$core$Json_Decode$map, tagger, _elm_lang$html$Html_Events$targetValue));
+};
+var _elm_lang$html$Html_Events$onMouseOut = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'mouseout',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onMouseOver = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'mouseover',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onMouseLeave = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'mouseleave',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onMouseEnter = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'mouseenter',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onMouseUp = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'mouseup',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onMouseDown = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'mousedown',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onDoubleClick = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'dblclick',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$onClick = function (msg) {
+	return A2(
+		_elm_lang$html$Html_Events$on,
+		'click',
+		_elm_lang$core$Json_Decode$succeed(msg));
+};
+var _elm_lang$html$Html_Events$Options = F2(
+	function (a, b) {
+		return {stopPropagation: a, preventDefault: b};
+	});
 var _elm_lang$html$Html_App$programWithFlags = _elm_lang$virtual_dom$VirtualDom$programWithFlags;
 var _elm_lang$html$Html_App$program = function (app) {
 	return _elm_lang$html$Html_App$programWithFlags(
@@ -10874,22 +11373,21 @@ var _adjective_object$elm_game$Main$fixHeld = function (state) {
 		});
 };
 var _adjective_object$elm_game$Main$releasePoint = function (state) {
+	var isNewPointFixed = function () {
+		var _p2 = state.heldPointWasFixed;
+		if (_p2.ctor === 'Just') {
+			return _p2._0;
+		} else {
+			return false;
+		}
+	}();
 	var state_ptfixed = A2(
 		_adjective_object$elm_game$Main$applyToHeld,
 		state,
 		function (pt) {
 			return _elm_lang$core$Native_Utils.update(
 				pt,
-				{
-					fixed: function () {
-						var _p2 = state.heldPointWasFixed;
-						if (_p2.ctor === 'Just') {
-							return _p2._0;
-						} else {
-							return false;
-						}
-					}()
-				});
+				{fixed: isNewPointFixed});
 		});
 	return _elm_lang$core$Native_Utils.update(
 		state_ptfixed,
@@ -10949,49 +11447,21 @@ var _adjective_object$elm_game$Main$grabPoint = function (state) {
 			return _elm_lang$core$Maybe$Just(_p10._0._1.fixed);
 		}
 	}();
-	return _adjective_object$elm_game$Main$fixHeld(
+	var shouldGrab = function () {
+		var _p11 = closest;
+		if (_p11.ctor === 'Nothing') {
+			return false;
+		} else {
+			return _elm_lang$core$Native_Utils.cmp(
+				A2(_adjective_object$elm_game$Primitives$dist, state.mousePosition, _p11._0._1.loc),
+				20) < 0;
+		}
+	}();
+	return shouldGrab ? _adjective_object$elm_game$Main$fixHeld(
 		_elm_lang$core$Native_Utils.update(
 			state,
-			{heldPointIndex: closest_index, heldPointWasFixed: is_closest_fixed}));
+			{heldPointIndex: closest_index, heldPointWasFixed: is_closest_fixed})) : state;
 };
-var _adjective_object$elm_game$Main$step = F2(
-	function (msg, state) {
-		var _p11 = msg;
-		switch (_p11.ctor) {
-			case 'Tick':
-				return _elm_lang$core$Native_Utils.update(
-					state,
-					{
-						cloth: A2(_adjective_object$elm_game$Cloth$updateCloth, state.cloth, _p11._0)
-					});
-			case 'Resize':
-				return _elm_lang$core$Native_Utils.update(
-					state,
-					{frame: _p11._0});
-			case 'MouseDown':
-				return A2(
-					_adjective_object$elm_game$Main$movePoint,
-					_adjective_object$elm_game$Main$grabPoint(state),
-					state.mousePosition);
-			case 'MouseUp':
-				return _adjective_object$elm_game$Main$releasePoint(state);
-			default:
-				var _p13 = _p11._0;
-				var _p12 = state.heldPointIndex;
-				if (_p12.ctor === 'Nothing') {
-					return _elm_lang$core$Native_Utils.update(
-						state,
-						{
-							mousePosition: A2(_adjective_object$elm_game$Main$screenToCanvas, state, _p13)
-						});
-				} else {
-					return A2(
-						_adjective_object$elm_game$Main$movePoint,
-						state,
-						A2(_adjective_object$elm_game$Main$screenToCanvas, state, _p13));
-				}
-		}
-	});
 var _adjective_object$elm_game$Main$tup = function (pt) {
 	return {ctor: '_Tuple2', _0: pt.x, _1: pt.y};
 };
@@ -11001,7 +11471,31 @@ var _adjective_object$elm_game$Main$render = function (state) {
 		state.cloth,
 		A3(_elm_lang$core$Color$rgb, 217, 0, 0));
 };
-var _adjective_object$elm_game$Main$view = function (model) {
+var _adjective_object$elm_game$Main$getCurrent = F2(
+	function (constructor, model) {
+		var _p12 = constructor(0);
+		switch (_p12.ctor) {
+			case 'ClothWidth':
+				return _elm_lang$core$Basics$toFloat(
+					_elm_lang$core$Basics$fst(model.params.dimensions));
+			case 'ClothHeight':
+				return _elm_lang$core$Basics$toFloat(
+					_elm_lang$core$Basics$snd(model.params.dimensions));
+			case 'PointMass':
+				return model.params.point_mass;
+			case 'SpringLen':
+				return model.params.spring_len;
+			case 'SpringK':
+				return model.params.spring_k;
+			case 'Damping':
+				return model.cloth.damping_factor;
+			case 'GravityX':
+				return model.cloth.gravity.x;
+			default:
+				return model.cloth.gravity.y;
+		}
+	});
+var _adjective_object$elm_game$Main$viewCollage = function (model) {
 	return _evancz$elm_graphics$Element$toHtml(
 		A3(
 			_evancz$elm_graphics$Collage$collage,
@@ -11024,31 +11518,178 @@ var _adjective_object$elm_game$Main$view = function (model) {
 						_evancz$elm_graphics$Text$fromString('THIS IS A GAME')))
 				])));
 };
+var _adjective_object$elm_game$Main$adjustSimulationParams = F2(
+	function (param, state) {
+		var toParams = F2(
+			function (state, new_params) {
+				return _elm_lang$core$Native_Utils.update(
+					state,
+					{
+						cloth: _adjective_object$elm_game$Cloth$rectCloth(new_params),
+						heldPointIndex: _elm_lang$core$Maybe$Nothing,
+						heldPointWasFixed: _elm_lang$core$Maybe$Nothing,
+						params: new_params
+					});
+			});
+		var params = state.params;
+		var cloth = state.cloth;
+		var _p13 = param;
+		switch (_p13.ctor) {
+			case 'ClothWidth':
+				var new_params = _elm_lang$core$Native_Utils.update(
+					params,
+					{
+						dimensions: {
+							ctor: '_Tuple2',
+							_0: _p13._0,
+							_1: _elm_lang$core$Basics$snd(params.dimensions)
+						}
+					});
+				return A2(toParams, state, new_params);
+			case 'ClothHeight':
+				var new_params = _elm_lang$core$Native_Utils.update(
+					params,
+					{
+						dimensions: {
+							ctor: '_Tuple2',
+							_0: _elm_lang$core$Basics$fst(params.dimensions),
+							_1: _p13._0
+						}
+					});
+				return A2(toParams, state, new_params);
+			case 'PointMass':
+				var new_params = _elm_lang$core$Native_Utils.update(
+					params,
+					{point_mass: _p13._0});
+				return A2(toParams, state, new_params);
+			case 'SpringLen':
+				var new_params = _elm_lang$core$Native_Utils.update(
+					params,
+					{spring_len: _p13._0});
+				return A2(toParams, state, new_params);
+			case 'SpringK':
+				var new_params = _elm_lang$core$Native_Utils.update(
+					params,
+					{spring_k: _p13._0});
+				return A2(toParams, state, new_params);
+			case 'Damping':
+				var _p14 = _p13._0;
+				return _elm_lang$core$Native_Utils.update(
+					state,
+					{
+						cloth: _elm_lang$core$Native_Utils.update(
+							cloth,
+							{damping_factor: _p14}),
+						params: _elm_lang$core$Native_Utils.update(
+							params,
+							{damping_factor: _p14})
+					});
+			case 'GravityX':
+				var _p15 = _p13._0;
+				return _elm_lang$core$Native_Utils.update(
+					state,
+					{
+						cloth: _elm_lang$core$Native_Utils.update(
+							cloth,
+							{
+								gravity: A2(_adjective_object$elm_game$Primitives$Point, _p15, state.cloth.gravity.y)
+							}),
+						params: _elm_lang$core$Native_Utils.update(
+							params,
+							{
+								gravity: A2(_adjective_object$elm_game$Primitives$Point, _p15, state.params.gravity.y)
+							})
+					});
+			default:
+				var _p16 = _p13._0;
+				return _elm_lang$core$Native_Utils.update(
+					state,
+					{
+						cloth: _elm_lang$core$Native_Utils.update(
+							cloth,
+							{
+								gravity: A2(_adjective_object$elm_game$Primitives$Point, state.cloth.gravity.x, _p16)
+							}),
+						params: _elm_lang$core$Native_Utils.update(
+							params,
+							{
+								gravity: A2(_adjective_object$elm_game$Primitives$Point, state.params.gravity.x, _p16)
+							})
+					});
+		}
+	});
+var _adjective_object$elm_game$Main$step = F2(
+	function (msg, state) {
+		var _p17 = msg;
+		switch (_p17.ctor) {
+			case 'Tick':
+				return _elm_lang$core$Native_Utils.update(
+					state,
+					{
+						cloth: A2(_adjective_object$elm_game$Cloth$updateCloth, state.cloth, _p17._0)
+					});
+			case 'Resize':
+				return _elm_lang$core$Native_Utils.update(
+					state,
+					{frame: _p17._0});
+			case 'MouseDown':
+				return A2(
+					_adjective_object$elm_game$Main$movePoint,
+					_adjective_object$elm_game$Main$grabPoint(state),
+					state.mousePosition);
+			case 'MouseUp':
+				return _adjective_object$elm_game$Main$releasePoint(state);
+			case 'MouseMove':
+				var _p19 = _p17._0;
+				var _p18 = state.heldPointIndex;
+				if (_p18.ctor === 'Nothing') {
+					return _elm_lang$core$Native_Utils.update(
+						state,
+						{
+							mousePosition: A2(_adjective_object$elm_game$Main$screenToCanvas, state, _p19)
+						});
+				} else {
+					return A2(
+						_adjective_object$elm_game$Main$movePoint,
+						state,
+						A2(_adjective_object$elm_game$Main$screenToCanvas, state, _p19));
+				}
+			case 'AdjustParameter':
+				return A2(_adjective_object$elm_game$Main$adjustSimulationParams, _p17._0, state);
+			default:
+				return state;
+		}
+	});
+var _adjective_object$elm_game$Main$initialParams = {
+	offsets: A2(_adjective_object$elm_game$Primitives$Point, 0, 0),
+	dimensions: {ctor: '_Tuple2', _0: 13, _1: 6},
+	point_mass: 0.1,
+	spring_len: 20,
+	spring_k: 3,
+	damping_factor: 0.96,
+	gravity: A2(_adjective_object$elm_game$Primitives$Point, 0, -19.6),
+	fixed_points: _elm_lang$core$Maybe$Nothing
+};
 var _adjective_object$elm_game$Main$initialState = {
-	cloth: _adjective_object$elm_game$Cloth$rectCloth(
-		{
-			offsets: {ctor: '_Tuple2', _0: 0, _1: 0},
-			dimensions: {ctor: '_Tuple2', _0: 13, _1: 6},
-			point_mass: 0.1,
-			spring_len: 20,
-			spring_k: 3,
-			damping_factor: 0.96,
-			gravity: A2(_adjective_object$elm_game$Primitives$Point, 0, -19.6),
-			fixed_points: _elm_lang$core$Native_List.fromArray(
-				[
-					{ctor: '_Tuple2', _0: 0, _1: 5},
-					{ctor: '_Tuple2', _0: 12, _1: 5}
-				])
-		}),
+	cloth: _adjective_object$elm_game$Cloth$rectCloth(_adjective_object$elm_game$Main$initialParams),
 	frame: {width: 800, height: 600},
 	heldPointIndex: _elm_lang$core$Maybe$Nothing,
 	heldPointWasFixed: _elm_lang$core$Maybe$Nothing,
-	mousePosition: A2(_adjective_object$elm_game$Primitives$Point, 0, 0)
+	mousePosition: A2(_adjective_object$elm_game$Primitives$Point, 0, 0),
+	params: _adjective_object$elm_game$Main$initialParams
 };
-var _adjective_object$elm_game$Main$GameState = F5(
-	function (a, b, c, d, e) {
-		return {cloth: a, frame: b, heldPointIndex: c, heldPointWasFixed: d, mousePosition: e};
+var _adjective_object$elm_game$Main$GameState = F6(
+	function (a, b, c, d, e, f) {
+		return {cloth: a, frame: b, heldPointIndex: c, heldPointWasFixed: d, mousePosition: e, params: f};
 	});
+var _adjective_object$elm_game$Main$SimulationSlider = F5(
+	function (a, b, c, d, e) {
+		return {setting: a, label: b, min: c, max: d, step: e};
+	});
+var _adjective_object$elm_game$Main$NoOp = {ctor: 'NoOp'};
+var _adjective_object$elm_game$Main$AdjustParameter = function (a) {
+	return {ctor: 'AdjustParameter', _0: a};
+};
 var _adjective_object$elm_game$Main$MouseUp = function (a) {
 	return {ctor: 'MouseUp', _0: a};
 };
@@ -11061,15 +11702,31 @@ var _adjective_object$elm_game$Main$MouseMove = function (a) {
 var _adjective_object$elm_game$Main$Resize = function (a) {
 	return {ctor: 'Resize', _0: a};
 };
-var _adjective_object$elm_game$Main$fireInit = A3(
-	_elm_lang$core$Task$perform,
-	function (size) {
-		return _adjective_object$elm_game$Main$Resize(size);
-	},
-	function (size) {
-		return _adjective_object$elm_game$Main$Resize(size);
-	},
-	_elm_lang$window$Window$size);
+var _adjective_object$elm_game$Main$fireInit = function () {
+	var injectStyles = A3(
+		_elm_lang$core$Task$perform,
+		function (_p20) {
+			return _adjective_object$elm_game$Main$NoOp;
+		},
+		function (_p21) {
+			return _adjective_object$elm_game$Main$NoOp;
+		},
+		_adjective_object$elm_game$ElmAbuse$forceStyle(
+			_elm_lang$core$Native_List.fromArray(
+				['style.css'])));
+	var readSize = A3(
+		_elm_lang$core$Task$perform,
+		function (size) {
+			return _adjective_object$elm_game$Main$Resize(size);
+		},
+		function (size) {
+			return _adjective_object$elm_game$Main$Resize(size);
+		},
+		_elm_lang$window$Window$size);
+	return _elm_lang$core$Platform_Cmd$batch(
+		_elm_lang$core$Native_List.fromArray(
+			[injectStyles, readSize]));
+}();
 var _adjective_object$elm_game$Main$Tick = function (a) {
 	return {ctor: 'Tick', _0: a};
 };
@@ -11082,6 +11739,157 @@ var _adjective_object$elm_game$Main$subscriptions = function (state) {
 				_elm_lang$mouse$Mouse$moves(_adjective_object$elm_game$Main$MouseMove),
 				_elm_lang$mouse$Mouse$downs(_adjective_object$elm_game$Main$MouseDown),
 				_elm_lang$mouse$Mouse$ups(_adjective_object$elm_game$Main$MouseUp)
+			]));
+};
+var _adjective_object$elm_game$Main$GravityY = function (a) {
+	return {ctor: 'GravityY', _0: a};
+};
+var _adjective_object$elm_game$Main$GravityX = function (a) {
+	return {ctor: 'GravityX', _0: a};
+};
+var _adjective_object$elm_game$Main$Damping = function (a) {
+	return {ctor: 'Damping', _0: a};
+};
+var _adjective_object$elm_game$Main$SpringK = function (a) {
+	return {ctor: 'SpringK', _0: a};
+};
+var _adjective_object$elm_game$Main$SpringLen = function (a) {
+	return {ctor: 'SpringLen', _0: a};
+};
+var _adjective_object$elm_game$Main$PointMass = function (a) {
+	return {ctor: 'PointMass', _0: a};
+};
+var _adjective_object$elm_game$Main$ClothHeight = function (a) {
+	return {ctor: 'ClothHeight', _0: a};
+};
+var _adjective_object$elm_game$Main$ClothWidth = function (a) {
+	return {ctor: 'ClothWidth', _0: a};
+};
+var _adjective_object$elm_game$Main$interfaceDesc = _elm_lang$core$Native_List.fromArray(
+	[
+		{
+		setting: function (_p22) {
+			return _adjective_object$elm_game$Main$ClothWidth(
+				_elm_lang$core$Basics$floor(_p22));
+		},
+		label: 'width',
+		min: 1,
+		max: 25,
+		step: _elm_lang$core$Maybe$Just(1)
+	},
+		{
+		setting: function (_p23) {
+			return _adjective_object$elm_game$Main$ClothHeight(
+				_elm_lang$core$Basics$floor(_p23));
+		},
+		label: 'height',
+		min: 1,
+		max: 25,
+		step: _elm_lang$core$Maybe$Just(1)
+	},
+		{setting: _adjective_object$elm_game$Main$PointMass, label: 'point mass', min: 0, max: 2, step: _elm_lang$core$Maybe$Nothing},
+		{setting: _adjective_object$elm_game$Main$SpringLen, label: 'spring length', min: 0, max: 100, step: _elm_lang$core$Maybe$Nothing},
+		{setting: _adjective_object$elm_game$Main$SpringK, label: 'spring k', min: 0, max: 10, step: _elm_lang$core$Maybe$Nothing},
+		{setting: _adjective_object$elm_game$Main$Damping, label: 'damping factor', min: 0, max: 1, step: _elm_lang$core$Maybe$Nothing},
+		{setting: _adjective_object$elm_game$Main$GravityX, label: 'gravity x', min: -30, max: 30, step: _elm_lang$core$Maybe$Nothing},
+		{setting: _adjective_object$elm_game$Main$GravityY, label: 'gravity y', min: -30, max: 30, step: _elm_lang$core$Maybe$Nothing}
+	]);
+var _adjective_object$elm_game$Main$viewSliders = function (model) {
+	var violentToFloat = function (str) {
+		var _p24 = _elm_lang$core$String$toFloat(str);
+		if (_p24.ctor === 'Err') {
+			return 0;
+		} else {
+			return _p24._0;
+		}
+	};
+	var makeSlider = F2(
+		function (model, slider) {
+			return A2(
+				_elm_lang$html$Html$div,
+				_elm_lang$core$Native_List.fromArray(
+					[]),
+				_elm_lang$core$Native_List.fromArray(
+					[
+						A2(
+						_elm_lang$html$Html$label,
+						_elm_lang$core$Native_List.fromArray(
+							[
+								_elm_lang$html$Html_Attributes$name(slider.label)
+							]),
+						_elm_lang$core$Native_List.fromArray(
+							[
+								_elm_lang$html$Html$text(slider.label)
+							])),
+						A2(
+						_elm_lang$html$Html$input,
+						_elm_lang$core$Native_List.fromArray(
+							[
+								_elm_lang$html$Html_Attributes$type$('range'),
+								_elm_lang$html$Html_Attributes$name(slider.label),
+								_elm_lang$html$Html_Attributes$min(
+								_elm_lang$core$Basics$toString(slider.min)),
+								_elm_lang$html$Html_Attributes$max(
+								_elm_lang$core$Basics$toString(slider.max)),
+								_elm_lang$html$Html_Attributes$step(
+								function () {
+									var _p25 = slider.step;
+									if (_p25.ctor === 'Just') {
+										return _elm_lang$core$Basics$toString(_p25._0);
+									} else {
+										return '0.001';
+									}
+								}()),
+								_elm_lang$html$Html_Attributes$defaultValue(
+								_elm_lang$core$Basics$toString(
+									A2(_adjective_object$elm_game$Main$getCurrent, slider.setting, model))),
+								A2(
+								_elm_lang$html$Html_Events$on,
+								'input',
+								A2(
+									_elm_lang$core$Json_Decode$map,
+									function (_p26) {
+										return _adjective_object$elm_game$Main$AdjustParameter(
+											slider.setting(
+												violentToFloat(_p26)));
+									},
+									A2(
+										_elm_lang$core$Json_Decode$at,
+										_elm_lang$core$Native_List.fromArray(
+											['target', 'value']),
+										_elm_lang$core$Json_Decode$string)))
+							]),
+						_elm_lang$core$Native_List.fromArray(
+							[]))
+					]));
+		});
+	return A2(
+		_elm_lang$html$Html$div,
+		_elm_lang$core$Native_List.fromArray(
+			[
+				_elm_lang$html$Html_Attributes$id('parameters')
+			]),
+		_elm_lang$core$Native_List.fromArray(
+			[
+				A2(
+				_elm_lang$html$Html$form,
+				_elm_lang$core$Native_List.fromArray(
+					[]),
+				A2(
+					_elm_lang$core$List$map,
+					makeSlider(model),
+					_adjective_object$elm_game$Main$interfaceDesc))
+			]));
+};
+var _adjective_object$elm_game$Main$view = function (model) {
+	return A2(
+		_elm_lang$html$Html$div,
+		_elm_lang$core$Native_List.fromArray(
+			[]),
+		_elm_lang$core$Native_List.fromArray(
+			[
+				_adjective_object$elm_game$Main$viewCollage(model),
+				_adjective_object$elm_game$Main$viewSliders(model)
 			]));
 };
 var _adjective_object$elm_game$Main$main = {
