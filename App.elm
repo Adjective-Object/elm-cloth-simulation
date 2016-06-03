@@ -122,7 +122,7 @@ interfaceDesc =
       }
     , { setting = PointMass
       , label = "point mass"
-      , min = -2
+      , min = 0
       , max = 2
       , step = Nothing
       }
@@ -173,6 +173,7 @@ adjustSimulationParams param state =
                 | cloth = Cloth.rectCloth new_params
                 , heldPointIndex = Nothing
                 , heldPointWasFixed = Nothing
+                , params = new_params
             }
     in
         case param of
@@ -400,12 +401,23 @@ grabPoint state =
 
                 Just ( index, pt ) ->
                     Just pt.fixed
+
+        shouldGrab =
+            case closest of
+                Nothing ->
+                    False
+
+                Just ( index, pt ) ->
+                    dist state.mousePosition pt.loc < 20
     in
-        fixHeld
-            { state
-                | heldPointIndex = closest_index
-                , heldPointWasFixed = is_closest_fixed
-            }
+        if shouldGrab then
+            fixHeld
+                { state
+                    | heldPointIndex = closest_index
+                    , heldPointWasFixed = is_closest_fixed
+                }
+        else
+            state
 
 
 applyToHeld state fn =
