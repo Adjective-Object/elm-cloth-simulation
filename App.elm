@@ -59,7 +59,7 @@ initialParams =
     , point_mass = 0.1
     , spring_len = 20
     , spring_k = 3
-    , damping_factor = 0.96
+    , damping_factor = 0.996
     , gravity = Point 0 -19.6
     , fixed_points = Nothing
     }
