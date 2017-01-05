@@ -1,5 +1,6 @@
-module Main exposing (..)
-
+module App exposing (..)
+{-| Main application entry point
+-}
 -- where
 
 import Color exposing (..)
